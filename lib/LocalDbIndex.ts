@@ -24,7 +24,7 @@ export class LocalDBIndex<T extends LocalDBEntity, K extends LocalDBIndexableTyp
   private dbBackward: Level<LocalDBIdType, string>
   private indexName: string
 
-  constructor(dbPath: string, readonly indexKeyPath: string) {
+  constructor(private readonly baseKey: string, dbPath: string, readonly indexKeyPath: string) {
     this.indexName = hashString(indexKeyPath)
     const dbFilenameForward = FILES.INDEX_DB.replace('{indexName}', this.indexName).replace('{orientation}', 'forward')
     const dbFilenameBackward = FILES.INDEX_DB.replace('{indexName}', this.indexName).replace('{orientation}', 'backward')

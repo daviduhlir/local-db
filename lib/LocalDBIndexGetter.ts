@@ -8,7 +8,7 @@ import { LocalDBIndex } from './LocalDBIndex'
  *
  */
 export class LocalDBIndexGetter<T extends LocalDBEntity> {
-  constructor(private db: Level<string, LocalDBEntityWithId<T>>, readonly index: LocalDBIndex<T, any>) {}
+  constructor(private readonly baseKey: string, private db: Level<string, LocalDBEntityWithId<T>>, readonly index: LocalDBIndex<T, any>) {}
 
   public async exists(value: any): Promise<boolean> {
     return this.index.exists(value)

@@ -2,7 +2,7 @@ import { Level } from 'level'
 import { LocalDBEntity, LocalDBEntityWithId, LocalDBIdType } from './interfaces'
 import { FILES } from './constants'
 import * as path from 'path'
-import { createRandomId, levelDbAsyncIterable } from './utils'
+import { createRandomId, hashString, levelDbAsyncIterable } from './utils'
 import { friendMethodsSymbolAddItem, friendMethodsSymbolRemapIndex, friendMethodsSymbolRemoveItem, LocalDBIndex } from './LocalDBIndex'
 import { LocalDBIndexGetter } from './LocalDBIndexGetter'
 
@@ -13,6 +13,7 @@ export interface LocalDBOptionsIndexes {
 }
 
 export interface LocalDBOptions<I extends LocalDBOptionsIndexes> {
+  baseKey?: string
   indexes?: I
 }
 
@@ -27,13 +28,15 @@ export class LocalDB<T extends LocalDBEntity, I extends LocalDBOptionsIndexes> {
   private db: Level<string, LocalDBEntityWithId<T>>
   private indexes: Record<string, LocalDBIndex<T, any>> = {}
   private indexGetters: Record<string, LocalDBIndexGetter<T>> = {}
+  private baseKey: string
 
   constructor(dbPath: string, options: LocalDBOptions<I> = {}) {
+    this.baseKey = options.baseKey || hashString(dbPath)
     this.db = new Level(path.join(dbPath, FILES.DATA_DB), { valueEncoding: 'json' })
     if (options.indexes) {
       for (const [indexName, indexDef] of Object.entries(options.indexes)) {
-        this.indexes[indexName] = new LocalDBIndex<T, any>(dbPath, indexDef.path)
-        this.indexGetters[indexName] = new LocalDBIndexGetter(this.db, this.indexes[indexName])
+        this.indexes[indexName] = new LocalDBIndex<T, any>(this.baseKey, dbPath, indexDef.path)
+        this.indexGetters[indexName] = new LocalDBIndexGetter(this.baseKey, this.db, this.indexes[indexName])
       }
     }
   }
@@ -61,20 +64,20 @@ export class LocalDB<T extends LocalDBEntity, I extends LocalDBOptionsIndexes> {
   }
 
   async insert(data: T): Promise<LocalDBIdType> {
-    const id = createRandomId()
-    const value = {
-      ...data,
-      $id: id,
-    }
-    await this.db.put(id, value)
-    for(const index of Object.values(this.indexes)) {
-      await index[friendMethodsSymbolAddItem](value)
-    }
-    return id
+      const id = createRandomId()
+      const value = {
+        ...data,
+        $id: id,
+      }
+      await this.db.put(id, value)
+      for(const index of Object.values(this.indexes)) {
+        await index[friendMethodsSymbolAddItem](value)
+      }
+      return id
   }
 
   async edit(id: string, data: Partial<T>): Promise<void> {
-    const oldData = await this.getOne(id)
+    const oldData = await this.db.get(id)
     if (!oldData) {
       throw new Error('Item not found')
     }
