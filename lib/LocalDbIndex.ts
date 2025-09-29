@@ -138,7 +138,11 @@ export class LocalDbIndex<T extends LocalDbEntity, K extends LocalDBIndexableTyp
   public async [friendMethodsSymbolRemoveItem](id: LocalDbIdType) {
     const k = await this.dbBackward.get(id)
     const ids = (await this.dbForward.get(k))?.ids || []
-    ids.splice(ids.indexOf(id), 1)
+    const idx = ids.indexOf(id)
+    if (idx === -1) {
+      return
+    }
+    ids.splice(idx, 1)
     await this.dbForward.put(k, { ids })
     await this.dbBackward.del(id)
   }
@@ -162,7 +166,7 @@ export class LocalDbIndex<T extends LocalDbEntity, K extends LocalDBIndexableTyp
       return hashString('undefined')
     }
     if (value instanceof Date) {
-      return value.toISOString()
+      return charwise.encode(value.getTime())
     }
     if (typeof value === 'string') {
       return value
