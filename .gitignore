@@ -116,3 +116,5 @@ dist/*
 
 externalLibsExample/package-lock.json
 externalLibsExample/node_modules
+
+example/db
