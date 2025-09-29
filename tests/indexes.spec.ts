@@ -1,5 +1,5 @@
 import { expect } from 'chai'
-import { LocalDB } from '../lib'
+import { LocalDB } from '../dist'
 import * as path from 'path'
 import * as fs from 'fs'
 

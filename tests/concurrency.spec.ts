@@ -1,5 +1,5 @@
 import { expect } from 'chai'
-import { LocalDB } from '../lib'
+import { LocalDB } from '../dist'
 import * as path from 'path'
 import * as fs from 'fs'
 
@@ -38,7 +38,7 @@ describe('Concurrency and Lock Tests', () => {
 
   describe('concurrent inserts', () => {
     it('should handle multiple concurrent inserts', async () => {
-      const promises = []
+      const promises: any[] = []
       for (let i = 0; i < 10; i++) {
         promises.push(
           db.insert({
@@ -61,7 +61,7 @@ describe('Concurrency and Lock Tests', () => {
     })
 
     it('should correctly update indexes for concurrent inserts', async () => {
-      const promises = []
+      const promises: any[] = []
       for (let i = 0; i < 5; i++) {
         promises.push(
           db.insert({
@@ -82,7 +82,7 @@ describe('Concurrency and Lock Tests', () => {
   describe('concurrent edits', () => {
     it('should handle concurrent edits to different documents', async () => {
       // Insert test documents
-      const ids = []
+      const ids: any[] = []
       for (let i = 0; i < 5; i++) {
         const id = await db.insert({
           name: `User ${i}`,
@@ -114,7 +114,7 @@ describe('Concurrency and Lock Tests', () => {
       })
 
       // Try to edit the same document concurrently
-      const editPromises = []
+      const editPromises: any[] = []
       for (let i = 1; i <= 10; i++) {
         editPromises.push(
           db.edit(id, {
@@ -138,7 +138,7 @@ describe('Concurrency and Lock Tests', () => {
       })
 
       // Concurrently edit the name
-      const editPromises = []
+      const editPromises: any[] = []
       for (let i = 1; i <= 5; i++) {
         editPromises.push(
           db.edit(id, {
@@ -163,7 +163,7 @@ describe('Concurrency and Lock Tests', () => {
 
   describe('concurrent deletes', () => {
     it('should handle concurrent deletes', async () => {
-      const ids = []
+      const ids: any[] = []
       for (let i = 0; i < 5; i++) {
         const id = await db.insert({
           name: `User ${i}`,
@@ -204,7 +204,7 @@ describe('Concurrency and Lock Tests', () => {
 
   describe('mixed concurrent operations', () => {
     it('should handle mixed inserts, edits, and deletes', async () => {
-      const operations = []
+      const operations: any[] = []
 
       // Insert 10 documents
       for (let i = 0; i < 10; i++) {
@@ -219,7 +219,7 @@ describe('Concurrency and Lock Tests', () => {
       const ids = await Promise.all(operations)
 
       // Mix of edits and deletes
-      const mixedOps = []
+      const mixedOps: any[] = []
 
       // Edit first 5
       for (let i = 0; i < 5; i++) {
@@ -271,7 +271,7 @@ describe('Concurrency and Lock Tests', () => {
         })
       }
 
-      const operations = []
+      const operations: any[] = []
 
       // Concurrent reads
       for (let i = 0; i < 20; i++) {
@@ -309,7 +309,7 @@ describe('Concurrency and Lock Tests', () => {
       }
 
       // Concurrent range queries
-      const queries = []
+      const queries: any[] = []
       for (let i = 0; i < 10; i++) {
         queries.push(
           db.getIndex('counter').query({
@@ -338,7 +338,7 @@ describe('Concurrency and Lock Tests', () => {
         })
       }
 
-      const operations = []
+      const operations: any[] = []
       let remapStarted = false
       let remapFinished = false
 
@@ -375,7 +375,7 @@ describe('Concurrency and Lock Tests', () => {
     it('should handle high concurrency load', async function() {
       this.timeout(10000) // Increase timeout for stress test
 
-      const operations = []
+      const operations: any[] = []
       const insertCount = 100
 
       // Insert many documents concurrently
