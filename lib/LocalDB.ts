@@ -1,14 +1,13 @@
-import { Level, IteratorOptions } from 'level'
+import { Level } from 'level'
 import { LocalDbEntity, LocalDbEntityWithId, LocalDbIdType } from './interfaces'
 import { FILES } from './constants'
 import * as path from 'path'
 import { createRandomId, levelDbAsyncIterable } from './utils'
-import { friendMethodsSymbolAddItem, friendMethodsSymbolRemapIndex, friendMethodsSymbolRemoveItem, LocalDbIndex } from './LocalDbIndex'
+import { friendMethodsSymbolAddItem, friendMethodsSymbolRemapIndex, friendMethodsSymbolRemoveItem, LocalDbIndex, LocalDBIndexGetter } from './LocalDbIndex'
 
 export interface LocalDBOptionsIndexes {
   [key: string]: {
     path: string
-    type: 'string' | 'number'
   }
 }
 
@@ -16,27 +15,13 @@ export interface LocalDBOptions<I extends LocalDBOptionsIndexes> {
   indexes?: I
 }
 
-export class LocalDBIndexGetter<T extends LocalDbEntity> {
-  constructor( private db: LocalDB<T, any>, readonly index: LocalDbIndex<T, any>) {}
-
-  public async exists(value: any): Promise<boolean> {
-    return this.index.exists(value)
-  }
-
-  public async get(value: any): Promise<LocalDbEntityWithId<T>[]> {
-    const foundIds = await this.index.get(value)
-    return this.db.get(foundIds)
-  }
-
-  public async getOne(value: any): Promise<LocalDbEntityWithId<T> | null> {
-    const ids = await this.index.get(value)
-    if (!ids || !ids.length) {
-      return null
-    }
-    return this.db.getOne(ids[0])
-  }
-}
-
+/**
+ *
+ * Local DB
+ *
+ *  Main class for local database
+ *
+ */
 export class LocalDB<T extends LocalDbEntity, I extends LocalDBOptionsIndexes> {
   private db: Level<string, LocalDbEntityWithId<T>>
   private indexes: Record<string, LocalDbIndex<T, any>> = {}
@@ -46,8 +31,8 @@ export class LocalDB<T extends LocalDbEntity, I extends LocalDBOptionsIndexes> {
     this.db = new Level(path.join(dbPath, FILES.DATA_DB), { valueEncoding: 'json' })
     if (options.indexes) {
       for (const [indexName, indexDef] of Object.entries(options.indexes)) {
-        this.indexes[indexName] = new LocalDbIndex<T, any>(dbPath, indexDef.path, indexDef.type)
-        this.indexGetters[indexName] = new LocalDBIndexGetter(this, this.indexes[indexName])
+        this.indexes[indexName] = new LocalDbIndex<T, any>(dbPath, indexDef.path)
+        this.indexGetters[indexName] = new LocalDBIndexGetter(this.db, this.indexes[indexName])
       }
     }
   }
