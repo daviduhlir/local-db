@@ -24,6 +24,7 @@ describe('Basic CRUD Tests', () => {
         },
       },
     })
+    await db.open()
   })
 
   afterEach(async () => {

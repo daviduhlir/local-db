@@ -31,12 +31,16 @@ export class LocalDB<T extends LocalDBEntity, I extends LocalDBOptionsIndexes> {
   private indexGetters: Record<string, LocalDBIndexGetter<T>> = {}
   private baseKey: string
 
-  constructor(dbPath: string, options: LocalDBOptions<I> = {}) {
+  constructor(readonly dbPath: string, readonly options: LocalDBOptions<I> = {}) {
     this.baseKey = options.baseKey || hashString(dbPath)
-    this.db = new Level(path.join(dbPath, FILES.DATA_DB), { valueEncoding: 'json' })
-    if (options.indexes) {
-      for (const [indexName, indexDef] of Object.entries(options.indexes)) {
-        this.indexes[indexName] = new LocalDBIndex<T, any>(this.baseKey, dbPath, indexDef.path)
+  }
+
+  public async open() {
+    this.db = new Level(path.join(this.dbPath, FILES.DATA_DB), { valueEncoding: 'json' })
+    if (this.options.indexes) {
+      for (const [indexName, indexDef] of Object.entries(this.options.indexes)) {
+        this.indexes[indexName] = new LocalDBIndex<T, any>(this.baseKey, this.dbPath, indexDef.path)
+        await this.indexes[indexName].open(this.db)
         this.indexGetters[indexName] = new LocalDBIndexGetter(this.baseKey, this.db, this.indexes[indexName])
       }
     }

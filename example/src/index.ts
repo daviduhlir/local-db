@@ -16,6 +16,8 @@ const db = new LocalDB('./db', {
 
 
 async function main() {
+  await db.open()
+
   await db.insert({
     name: 'David',
     info: {

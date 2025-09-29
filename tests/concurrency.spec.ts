@@ -24,6 +24,7 @@ describe('Concurrency and Lock Tests', () => {
         },
       },
     })
+    await db.open()
   })
 
   afterEach(async () => {

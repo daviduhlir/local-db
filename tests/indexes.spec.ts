@@ -33,6 +33,7 @@ describe('Index Query Tests', () => {
         },
       },
     })
+    await db.open()
 
     // Insert test data
     await db.insert({

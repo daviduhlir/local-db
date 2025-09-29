@@ -24,6 +24,7 @@ describe('Race Condition Tests', () => {
         },
       },
     })
+    await db.open()
   })
 
   afterEach(async () => {

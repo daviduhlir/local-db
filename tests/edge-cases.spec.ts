@@ -27,6 +27,7 @@ describe('Edge Cases Tests', () => {
         },
       },
     })
+    await db.open()
   })
 
   afterEach(async () => {
@@ -438,6 +439,7 @@ describe('Edge Cases Tests', () => {
   describe('database without indexes', () => {
     it('should work without any indexes defined', async () => {
       const simpleDb = new LocalDB(path.join(TEST_DB_PATH, 'simple'))
+      await simpleDb.open()
 
       const id = await simpleDb.insert({ value: 'test' })
       const doc: any = await simpleDb.getOne(id)

@@ -24,6 +24,7 @@ describe('Indexing Conflict Tests', () => {
         },
       },
     })
+    await db.open()
   })
 
   afterEach(async () => {

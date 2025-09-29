@@ -3,9 +3,10 @@ import { FILES } from './constants'
 import * as path from 'path'
 import { LocalDBEntity, LocalDBEntityWithId, LocalDBIdType, LocalDBIndexableType, LocalDBItterator } from './interfaces'
 import { getByExpression } from '@david.uhlir/expression'
-import { hashString } from './utils'
+import { hashString, levelDbAsyncIterable } from './utils'
 import * as charwise from 'charwise'
 import { SharedMutex } from '@david.uhlir/mutex'
+import { promises as fs } from 'fs'
 
 export const friendMethodsSymbolAddItem = Symbol('addItem')
 export const friendMethodsSymbolRemapIndex = Symbol('remapIndex')
@@ -24,12 +25,29 @@ export class LocalDBIndex<T extends LocalDBEntity, K extends LocalDBIndexableTyp
   private dbForward: Level<string, LocalDBIndexItem>
   private dbBackward: Level<LocalDBIdType, string>
   private indexName: string
-  constructor(protected baseKey: string, dbPath: string, readonly indexKeyPath: string) {
+  constructor(protected baseKey: string, readonly dbPath: string, readonly indexKeyPath: string) {
     this.indexName = hashString(indexKeyPath)
+  }
+
+  public async open(parentDb: Level<string, LocalDBEntityWithId<T>>) {
     const dbFilenameForward = FILES.INDEX_DB.replace('{indexName}', this.indexName).replace('{orientation}', 'forward')
     const dbFilenameBackward = FILES.INDEX_DB.replace('{indexName}', this.indexName).replace('{orientation}', 'backward')
-    this.dbForward = new Level(path.join(dbPath, dbFilenameForward), { valueEncoding: 'json' })
-    this.dbBackward = new Level(path.join(dbPath, dbFilenameBackward), { valueEncoding: 'json' })
+    const forwardPath = path.join(this.dbPath, dbFilenameForward)
+    const backwardPath = path.join(this.dbPath, dbFilenameBackward)
+
+    const needsRemap = !(await fs.stat(forwardPath).catch(() => false)) || !(await fs.stat(backwardPath).catch(() => false))
+    if (needsRemap) {
+      await fs.unlink(forwardPath).catch(() => {})
+      await fs.unlink(backwardPath).catch(() => {})
+    }
+
+    await fs.mkdir(this.dbPath, { recursive: true })
+    this.dbForward = new Level(forwardPath, { valueEncoding: 'json' })
+    this.dbBackward = new Level(backwardPath, { valueEncoding: 'json' })
+
+    if (needsRemap) {
+      await this[friendMethodsSymbolRemapIndex](levelDbAsyncIterable(parentDb))
+    }
   }
 
   public async close() {
