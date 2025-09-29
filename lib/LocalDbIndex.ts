@@ -5,6 +5,7 @@ import { LocalDBEntity, LocalDBEntityWithId, LocalDBIdType, LocalDBIndexableType
 import { getByExpression } from '@david.uhlir/expression'
 import { hashString } from './utils'
 import * as charwise from 'charwise'
+import { SharedMutex } from '@david.uhlir/mutex'
 
 export const friendMethodsSymbolAddItem = Symbol('addItem')
 export const friendMethodsSymbolRemapIndex = Symbol('remapIndex')
@@ -23,13 +24,16 @@ export class LocalDBIndex<T extends LocalDBEntity, K extends LocalDBIndexableTyp
   private dbForward: Level<string, LocalDBIndexItem>
   private dbBackward: Level<LocalDBIdType, string>
   private indexName: string
-
-  constructor(private readonly baseKey: string, dbPath: string, readonly indexKeyPath: string) {
+  constructor(protected baseKey: string, dbPath: string, readonly indexKeyPath: string) {
     this.indexName = hashString(indexKeyPath)
     const dbFilenameForward = FILES.INDEX_DB.replace('{indexName}', this.indexName).replace('{orientation}', 'forward')
     const dbFilenameBackward = FILES.INDEX_DB.replace('{indexName}', this.indexName).replace('{orientation}', 'backward')
     this.dbForward = new Level(path.join(dbPath, dbFilenameForward), { valueEncoding: 'json' })
     this.dbBackward = new Level(path.join(dbPath, dbFilenameBackward), { valueEncoding: 'json' })
+  }
+
+  public getIndexName() {
+    return this.indexName
   }
 
   async queryItterator(itteratorOptions: LocalDBItterator<LocalDBIndexableType>): Promise<LocalDBIdType[]> {
@@ -61,64 +65,77 @@ export class LocalDBIndex<T extends LocalDBEntity, K extends LocalDBIndexableTyp
       customOptions.eq = LocalDBIndex.serializeKeyByValue(itteratorOptions.eq)
     }
 
-    const results = []
-    for await (const [key, value] of this.dbForward.iterator(usedItteratorOptions)) {
-      if (customOptions.eq && key !== customOptions.eq) {
-        continue
+    return SharedMutex.lockMultiAccess(`${this.baseKey}/index/${this.indexName}`, async () => {
+      const results = []
+      for await (const [key, value] of this.dbForward.iterator(usedItteratorOptions)) {
+        if (customOptions.eq && key !== customOptions.eq) {
+          continue
+        }
+        if (customOptions.ne && key === customOptions.ne) {
+          continue
+        }
+        results.push(...value.ids)
       }
-      if (customOptions.ne && key === customOptions.ne) {
-        continue
-      }
-      results.push(...value.ids)
-    }
-    return results
+      return results
+    })
   }
 
   public async exists(value: K): Promise<boolean> {
-    return !!(await this.dbForward.get(LocalDBIndex.serializeKeyByValue(value)))?.ids?.length
+    const k = LocalDBIndex.serializeKeyByValue(value)
+    return SharedMutex.lockMultiAccess(`${this.baseKey}/index/${this.indexName}/${k}`, async () => {
+      return !!(await this.dbForward.get(k))?.ids?.length
+    })
   }
 
   public async get(value: K): Promise<LocalDBIdType[] | null> {
-    return (await this.dbForward.get(LocalDBIndex.serializeKeyByValue(value)))?.ids || []
+    const k = LocalDBIndex.serializeKeyByValue(value)
+    return SharedMutex.lockMultiAccess(`${this.baseKey}/index/${this.indexName}/${k}`, async () => {
+      return (await this.dbForward.get(k))?.ids || []
+    })
   }
 
   public async [friendMethodsSymbolAddItem](item: LocalDBEntityWithId<T>) {
     // TODO make it atomic!
     const value = getByExpression(item, this.indexKeyPath)
     const k = LocalDBIndex.serializeKeyByValue(value)
-    const ids = (await this.dbForward.get(k))?.ids || []
-
-    if (!ids.includes(item.$id)) {
-      ids.push(item.$id)
-      await this.dbForward.put(k, { ids })
-      await this.dbBackward.put(item.$id, k)
-    }
+    return SharedMutex.lockSingleAccess(`${this.baseKey}/index/${this.indexName}/${k}`, async () => {
+      const ids = (await this.dbForward.get(k))?.ids || []
+      if (!ids.includes(item.$id)) {
+        ids.push(item.$id)
+        await this.dbForward.put(k, { ids })
+        await this.dbBackward.put(item.$id, k)
+      }
+    })
   }
 
   public async [friendMethodsSymbolRemoveItem](id: LocalDBIdType) {
     const k = await this.dbBackward.get(id)
-    const ids = (await this.dbForward.get(k))?.ids || []
-    const idx = ids.indexOf(id)
-    if (idx === -1) {
-      return
-    }
-    ids.splice(idx, 1)
-    await this.dbForward.put(k, { ids })
-    await this.dbBackward.del(id)
+    return SharedMutex.lockSingleAccess(`${this.baseKey}/index/${this.indexName}/${k}`, async () => {
+      const ids = (await this.dbForward.get(k))?.ids || []
+      const idx = ids.indexOf(id)
+      if (idx === -1) {
+        return
+      }
+      ids.splice(idx, 1)
+      await this.dbForward.put(k, { ids })
+      await this.dbBackward.del(id)
+    })
   }
 
   public async [friendMethodsSymbolRemapIndex](items: AsyncIterable<LocalDBEntityWithId<T>>) {
-    // Remap whole index from AsyncIterable
-    await this.dbForward.clear();
-    await this.dbBackward.clear();
-    for await (const item of items) {
-      const value = getByExpression(item, this.indexKeyPath);
-      const k = LocalDBIndex.serializeKeyByValue(value);
-      const ids = (await this.dbForward.get(k))?.ids || [];
-      ids.push(item.$id);
-      await this.dbForward.put(k, { ids });
-      await this.dbBackward.put(item.$id, k);
-    }
+    return SharedMutex.lockMultiAccess(`${this.baseKey}/index/${this.indexName}`, async () => {
+      // Remap whole index from AsyncIterable
+      await this.dbForward.clear();
+      await this.dbBackward.clear();
+      for await (const item of items) {
+        const value = getByExpression(item, this.indexKeyPath);
+        const k = LocalDBIndex.serializeKeyByValue(value);
+        const ids = (await this.dbForward.get(k))?.ids || [];
+        ids.push(item.$id);
+        await this.dbForward.put(k, { ids });
+        await this.dbBackward.put(item.$id, k);
+      }
+    })
   }
 
   protected static serializeKeyByValue(value: any): string {

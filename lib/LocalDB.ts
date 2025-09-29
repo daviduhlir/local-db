@@ -5,6 +5,7 @@ import * as path from 'path'
 import { createRandomId, hashString, levelDbAsyncIterable } from './utils'
 import { friendMethodsSymbolAddItem, friendMethodsSymbolRemapIndex, friendMethodsSymbolRemoveItem, LocalDBIndex } from './LocalDBIndex'
 import { LocalDBIndexGetter } from './LocalDBIndexGetter'
+import { SharedMutex } from '@david.uhlir/mutex'
 
 export interface LocalDBOptionsIndexes {
   [key: string]: {
@@ -64,6 +65,7 @@ export class LocalDB<T extends LocalDBEntity, I extends LocalDBOptionsIndexes> {
   }
 
   async insert(data: T): Promise<LocalDBIdType> {
+    return SharedMutex.lockMultiAccess(`${this.baseKey}`, async () => {
       const id = createRandomId()
       const value = {
         ...data,
@@ -74,34 +76,41 @@ export class LocalDB<T extends LocalDBEntity, I extends LocalDBOptionsIndexes> {
         await index[friendMethodsSymbolAddItem](value)
       }
       return id
+    })
   }
 
   async edit(id: string, data: Partial<T>): Promise<void> {
-    const oldData = await this.db.get(id)
-    if (!oldData) {
-      throw new Error('Item not found')
-    }
-    const newData = {
-      ...oldData,
-      ...data,
-    }
-    await this.db.put(id, newData)
-    for(const index of Object.values(this.indexes)) {
-      await index[friendMethodsSymbolRemoveItem](id)
-      await index[friendMethodsSymbolAddItem](newData)
-    }
+    return SharedMutex.lockSingleAccess(`${this.baseKey}/${id}`, async () => {
+      const oldData = await this.db.get(id)
+      if (!oldData) {
+        throw new Error('Item not found')
+      }
+      const newData = {
+        ...oldData,
+        ...data,
+      }
+      await this.db.put(id, newData)
+      for(const index of Object.values(this.indexes)) {
+        await index[friendMethodsSymbolRemoveItem](id)
+        await index[friendMethodsSymbolAddItem](newData)
+      }
+    })
   }
 
   async delete(id: string): Promise<void> {
-    await this.db.del(id)
-    for(const index of Object.values(this.indexes)) {
-      await index[friendMethodsSymbolRemoveItem](id)
-    }
+    return SharedMutex.lockSingleAccess(`${this.baseKey}/${id}`, async () => {
+      await this.db.del(id)
+      for(const index of Object.values(this.indexes)) {
+        await index[friendMethodsSymbolRemoveItem](id)
+      }
+    })
   }
 
   async remapIndex(): Promise<void> {
-    for(const index of Object.values(this.indexes)) {
-      await index[friendMethodsSymbolRemapIndex](levelDbAsyncIterable(this.db))
-    }
+    return SharedMutex.lockSingleAccess(`${this.baseKey}`, async () => {
+      for(const index of Object.values(this.indexes)) {
+        await index[friendMethodsSymbolRemapIndex](levelDbAsyncIterable(this.db))
+      }
+    })
   }
 }
