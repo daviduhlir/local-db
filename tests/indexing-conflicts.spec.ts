@@ -41,14 +41,14 @@ describe('Indexing Conflict Tests', () => {
       this.timeout(10000)
 
       // Insert 50 documents
-      const ids = []
+      const ids: any[] = []
       for (let i = 0; i < 50; i++) {
         const id = await db.insert({ counter: i, status: 'active' })
         ids.push(id)
       }
 
       // Start remap and immediately delete some docs
-      const operations = []
+      const operations: any[] = []
       operations.push(db.remapIndex())
 
       // Give remap a moment to start
@@ -78,14 +78,14 @@ describe('Indexing Conflict Tests', () => {
       this.timeout(10000)
 
       // Insert 50 documents
-      const ids = []
+      const ids: any[] = []
       for (let i = 0; i < 50; i++) {
         const id = await db.insert({ counter: i, status: 'old' })
         ids.push(id)
       }
 
       // Start remap and immediately edit some docs
-      const operations = []
+      const operations: any[] = []
       operations.push(db.remapIndex())
 
       await new Promise(resolve => setTimeout(resolve, 5))
@@ -120,7 +120,7 @@ describe('Indexing Conflict Tests', () => {
       }
 
       // Start remap and immediately insert more docs
-      const operations = []
+      const operations: any[] = []
       operations.push(db.remapIndex())
 
       await new Promise(resolve => setTimeout(resolve, 5))
@@ -144,14 +144,14 @@ describe('Indexing Conflict Tests', () => {
       this.timeout(10000)
 
       // Insert initial documents
-      const ids = []
+      const ids: any[] = []
       for (let i = 0; i < 40; i++) {
         const id = await db.insert({ counter: i, status: 'active' })
         ids.push(id)
       }
 
       // Start remap
-      const operations = []
+      const operations: any[] = []
       operations.push(db.remapIndex())
 
       await new Promise(resolve => setTimeout(resolve, 5))
@@ -202,7 +202,7 @@ describe('Indexing Conflict Tests', () => {
       }
 
       // Start remap
-      const operations = []
+      const operations: any[] = []
       operations.push(db.remapIndex())
 
       await new Promise(resolve => setTimeout(resolve, 5))
@@ -232,7 +232,7 @@ describe('Indexing Conflict Tests', () => {
       const id = await db.insert({ counter: 0, status: 'initial' })
 
       // Rapidly change status many times
-      const operations = []
+      const operations: any[] = []
       for (let i = 0; i < 20; i++) {
         operations.push(
           db.edit(id, { status: `status-${i}` })
@@ -261,14 +261,14 @@ describe('Indexing Conflict Tests', () => {
     it('should handle document deleted while being indexed', async function() {
       this.timeout(10000)
 
-      const ids = []
+      const ids: any[] = []
       for (let i = 0; i < 20; i++) {
         const id = await db.insert({ counter: i, status: 'temp' })
         ids.push(id)
       }
 
       // Immediately delete half of them
-      const operations = []
+      const operations: any[] = []
       for (let i = 0; i < 10; i++) {
         operations.push(db.delete(ids[i]))
       }
@@ -296,7 +296,7 @@ describe('Indexing Conflict Tests', () => {
 
       // Try to remap multiple times concurrently
       // The mutex should serialize these
-      const operations = []
+      const operations: any[] = []
       for (let i = 0; i < 3; i++) {
         operations.push(db.remapIndex())
       }
@@ -318,14 +318,14 @@ describe('Indexing Conflict Tests', () => {
       this.timeout(10000)
 
       // Insert documents
-      const ids = []
+      const ids: any[] = []
       for (let i = 0; i < 20; i++) {
         const id = await db.insert({ counter: i, status: 'active' })
         ids.push(id)
       }
 
       // Delete half rapidly
-      const deleteOps = []
+      const deleteOps: any[] = []
       for (let i = 0; i < 10; i++) {
         deleteOps.push(db.delete(ids[i]))
       }
@@ -345,7 +345,7 @@ describe('Indexing Conflict Tests', () => {
 
       const id = await db.insert({ counter: 0, status: 'pending' })
 
-      const operations = []
+      const operations: any[] = []
 
       // Start a query
       operations.push(db.getIndex('status').get('pending'))
@@ -372,7 +372,7 @@ describe('Indexing Conflict Tests', () => {
       const id = await db.insert({ counter: 0, status: 'initial' })
 
       // 10 operations trying to change status simultaneously
-      const operations = []
+      const operations: any[] = []
       const statuses = ['a', 'b', 'c', 'd', 'e']
 
       for (let i = 0; i < 10; i++) {
@@ -406,13 +406,13 @@ describe('Indexing Conflict Tests', () => {
     it('should handle remap while actively deleting all documents', async function() {
       this.timeout(15000)
 
-      const ids = []
+      const ids: any[] = []
       for (let i = 0; i < 40; i++) {
         const id = await db.insert({ counter: i, status: 'temp' })
         ids.push(id)
       }
 
-      const operations = []
+      const operations: any[] = []
 
       // Start remap
       operations.push(db.remapIndex())
@@ -439,7 +439,7 @@ describe('Indexing Conflict Tests', () => {
         await db.insert({ counter: i, status: 'initial' })
       }
 
-      const operations = []
+      const operations: any[] = []
 
       // Start remap
       operations.push(db.remapIndex())
