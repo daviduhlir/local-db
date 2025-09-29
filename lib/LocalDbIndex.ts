@@ -60,8 +60,8 @@ export class LocalDBIndex<T extends LocalDBEntity, K extends LocalDBIndexableTyp
     }
 
     const customOptions: {
-      ne?: LocalDBIndexableType,
-      eq?: LocalDBIndexableType,
+      ne?: LocalDBIndexableType
+      eq?: LocalDBIndexableType
     } = {}
     if (itteratorOptions.hasOwnProperty('ne')) {
       customOptions.ne = LocalDBIndex.serializeKeyByValue(itteratorOptions.ne)
@@ -130,15 +130,15 @@ export class LocalDBIndex<T extends LocalDBEntity, K extends LocalDBIndexableTyp
   public async [friendMethodsSymbolRemapIndex](items: AsyncIterable<LocalDBEntityWithId<T>>) {
     return SharedMutex.lockMultiAccess(`${this.baseKey}/index/${this.indexName}`, async () => {
       // Remap whole index from AsyncIterable
-      await this.dbForward.clear();
-      await this.dbBackward.clear();
+      await this.dbForward.clear()
+      await this.dbBackward.clear()
       for await (const item of items) {
-        const value = getByExpression(item, this.indexKeyPath);
-        const k = LocalDBIndex.serializeKeyByValue(value);
-        const ids = (await this.dbForward.get(k))?.ids || [];
-        ids.push(item.$id);
-        await this.dbForward.put(k, { ids });
-        await this.dbBackward.put(item.$id, k);
+        const value = getByExpression(item, this.indexKeyPath)
+        const k = LocalDBIndex.serializeKeyByValue(value)
+        const ids = (await this.dbForward.get(k))?.ids || []
+        ids.push(item.$id)
+        await this.dbForward.put(k, { ids })
+        await this.dbBackward.put(item.$id, k)
       }
     })
   }

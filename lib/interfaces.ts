@@ -1,4 +1,4 @@
-export type LocalDBIndexableType = string | number | Date | boolean | null | object;
+export type LocalDBIndexableType = string | number | Date | boolean | null | object
 
 export interface LocalDBEntity {}
 export type LocalDBIdType = string

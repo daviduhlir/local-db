@@ -44,7 +44,7 @@ export class LocalDB<T extends LocalDBEntity, I extends LocalDBOptionsIndexes> {
 
   public async close() {
     await this.db.close()
-    for(const index of Object.values(this.indexes)) {
+    for (const index of Object.values(this.indexes)) {
       await index.close()
     }
   }
@@ -64,7 +64,7 @@ export class LocalDB<T extends LocalDBEntity, I extends LocalDBOptionsIndexes> {
 
   async getOne(id: string): Promise<LocalDBEntityWithId<T> | null> {
     const data = await this.db.get(id)
-    return (typeof data === 'object' && data !== null) ? { ...data, $id: id } : null
+    return typeof data === 'object' && data !== null ? { ...data, $id: id } : null
   }
 
   async get(ids: string[]): Promise<LocalDBEntityWithId<T>[]> {
@@ -81,7 +81,7 @@ export class LocalDB<T extends LocalDBEntity, I extends LocalDBOptionsIndexes> {
       $id: id,
     }
     await this.db.put(id, value)
-    for(const index of Object.values(this.indexes)) {
+    for (const index of Object.values(this.indexes)) {
       await index[friendMethodsSymbolAddItem](value)
     }
     return id
@@ -98,7 +98,7 @@ export class LocalDB<T extends LocalDBEntity, I extends LocalDBOptionsIndexes> {
         ...data,
       }
       await this.db.put(id, newData)
-      for(const index of Object.values(this.indexes)) {
+      for (const index of Object.values(this.indexes)) {
         await index[friendMethodsSymbolRemoveItem](id)
         await index[friendMethodsSymbolAddItem](newData)
       }
@@ -107,11 +107,11 @@ export class LocalDB<T extends LocalDBEntity, I extends LocalDBOptionsIndexes> {
 
   async delete(id: string): Promise<void> {
     return SharedMutex.lockSingleAccess(`${this.baseKey}/${id}`, async () => {
-      if (!await this.exists(id)) {
+      if (!(await this.exists(id))) {
         throw new Error('Item not found')
       }
       await this.db.del(id)
-      for(const index of Object.values(this.indexes)) {
+      for (const index of Object.values(this.indexes)) {
         await index[friendMethodsSymbolRemoveItem](id)
       }
     })
@@ -119,7 +119,7 @@ export class LocalDB<T extends LocalDBEntity, I extends LocalDBOptionsIndexes> {
 
   async remapIndex(): Promise<void> {
     return SharedMutex.lockSingleAccess(`${this.baseKey}`, async () => {
-      for(const index of Object.values(this.indexes)) {
+      for (const index of Object.values(this.indexes)) {
         await index[friendMethodsSymbolRemapIndex](levelDbAsyncIterable(this.db))
       }
     })
