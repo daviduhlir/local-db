@@ -1,4 +1,4 @@
-import { Level } from 'level'
+import { IteratorOptions, Level } from 'level'
 import { FILES } from './constants'
 import * as path from 'path'
 import { LocalDbEntity, LocalDbEntityWithId, LocalDbIdType, LocalDBIndexableType } from './interfaces'
@@ -10,8 +10,10 @@ export const friendMethodsSymbolAddItem = Symbol('addItem')
 export const friendMethodsSymbolRemapIndex = Symbol('remapIndex')
 export const friendMethodsSymbolRemoveItem = Symbol('removeItem')
 
+export type LocalDbIndexItem = { ids: LocalDbIdType[] }
+
 export class LocalDbIndex<T extends LocalDbEntity, K extends LocalDBIndexableType> {
-  private dbForward: Level<string, { ids: LocalDbIdType[] }>
+  private dbForward: Level<string, LocalDbIndexItem>
   private dbBackward: Level<LocalDbIdType, string>
   private indexName: string
 
@@ -21,6 +23,14 @@ export class LocalDbIndex<T extends LocalDbEntity, K extends LocalDBIndexableTyp
     const dbFilenameBackward = FILES.INDEX_DB.replace('{indexName}', this.indexName).replace('{orientation}', 'backward')
     this.dbForward = new Level(path.join(dbPath, dbFilenameForward), { valueEncoding: 'json' })
     this.dbBackward = new Level(path.join(dbPath, dbFilenameBackward), { valueEncoding: 'json' })
+  }
+
+  async queryItterator(itteratorOptions: IteratorOptions<K, LocalDbEntityWithId<T>>): Promise<LocalDbEntityWithId<T>[]> {
+    const results = []
+    for await (const [key, value] of this.dbForward.iterator(itteratorOptions)) {
+      results.push(value)
+    }
+    return results
   }
 
   public async exists(value: K): Promise<boolean> {

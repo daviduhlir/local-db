@@ -74,14 +74,6 @@ export class LocalDB<T extends LocalDbEntity, I extends LocalDBOptionsIndexes> {
     return this.db.getMany(ids)
   }
 
-  async queryItterator(itteratorOptions: IteratorOptions<string, LocalDbEntityWithId<T>>): Promise<LocalDbEntityWithId<T>[]> {
-    const results = []
-    for await (const [key, value] of this.db.iterator(itteratorOptions)) {
-      results.push(value)
-    }
-    return results
-  }
-
   async insert(data: T): Promise<LocalDbIdType> {
     const id = createRandomId()
     const value = {
