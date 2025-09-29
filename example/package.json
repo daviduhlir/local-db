@@ -1,0 +1,22 @@
+{
+  "name": "local-db-example",
+  "version": "1.0.0",
+  "description": "",
+  "main": "./build/index.js",
+  "scripts": {
+    "build": "rimraf ./build && tsc",
+    "start": "npm run build && node --enable-source-maps ./build/index.js",
+    "start:modules": "npm run build && node --enable-source-maps ./build/module-example.js",
+    "inspect": "npm run build && node --enable-source-maps --inspect ./build/index.js"
+  },
+  "author": "David Uhlíř",
+  "license": "ISC",
+  "dependencies": {
+    "@david.uhlir/local-db": "file:..",
+    "rimraf": "^2.6.2",
+    "typescript": "^5.5.4"
+  },
+  "devDependencies": {
+    "@types/node": "^18.11.9"
+  }
+}

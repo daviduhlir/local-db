@@ -1,0 +1,44 @@
+{
+  "name": "@david.uhlir/local-db",
+  "version": "0.1.16",
+  "description": "Simple local JSON database on level with indexes",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "rimraf ./dist && tsc",
+    "build:release": "rimraf ./dist && tsc --p tsconfig.release.json",
+    "prettier-check": "prettier --check --config .prettierrc.json 'lib/**/*.ts'",
+    "prettier-format": "prettier --config .prettierrc.json 'lib/**/*.ts' --write",
+    "test": "npm run build && ts-mocha --timeout 10000 --type-check -p ./tsconfig.json tests/**/*.spec.ts",
+    "test:release": "npm run build && ts-mocha --timeout 10000 --type-check -p ./tsconfig.json tests/**/*.spec.ts",
+    "release": "./scripts/release.sh"
+  },
+  "bin": {
+    "build-external-libs": "./tools/buildModules.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/daviduhlir/local-db.git"
+  },
+  "keywords": [
+    "node",
+    "typescript"
+  ],
+  "author": "David Uhlíř",
+  "license": "ISC",
+  "devDependencies": {
+    "@types/mocha": "^10.0.0",
+    "@types/node": "^18.11.9",
+    "chai": "^4.3.6",
+    "mocha": "^10.0.0",
+    "prettier": "^2.6.2",
+    "rimraf": "^2.6.2",
+    "ts-mocha": "^10.0.0",
+    "typescript": "^5.5.4"
+  },
+  "dependencies": {
+    "@david.uhlir/expression": "^2.0.1",
+    "charwise": "^3.0.1",
+    "level": "^10.0.0"
+  }
+}

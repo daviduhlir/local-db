@@ -1,0 +1,12 @@
+lib
+.github
+scripts
+example
+tests
+.gitignore
+.prettierrc.json
+tsconfig.json
+*.js.map
+externalLibsExample/node_modules
+externalLibsExample/build
+externalLibsExample/package-lock.json
