@@ -34,6 +34,9 @@ const db = new LocalDB('./db', {
   },
 })
 
+// Open the database (required before any operations)
+await db.open()
+
 // Insert data
 await db.insert({
   name: 'David',
@@ -48,6 +51,9 @@ const ageRange = await db.getIndex('age').query({
   gte: 25,
   lte: 35,
 })
+
+// Close when done
+await db.close()
 ```
 
 ## API Reference
@@ -62,6 +68,27 @@ new LocalDB<T, I>(dbPath: string, options?: LocalDBOptions<I>)
 - `dbPath` - Path to the database directory
 - `options.indexes` - Object defining indexes:
   - `path` - Dot-notation path to the property to index (e.g., `'info.age'`)
+- `options.baseKey` - Optional custom base key for mutex locking (defaults to hash of dbPath)
+
+**Note:** After creating the database, you must call `await db.open()` before performing any operations.
+
+### open()
+
+Opens the database and initializes all indexes. Must be called before any database operations.
+
+```typescript
+await db.open()
+```
+
+**Note:** If indexes don't exist, they will be automatically created and populated from existing data.
+
+### close()
+
+Closes the database and all index connections.
+
+```typescript
+await db.close()
+```
 
 ### Methods
 
@@ -209,6 +236,9 @@ const db = new LocalDB('./db', {
 })
 
 async function main() {
+  // Open the database
+  await db.open()
+
   // Insert multiple documents
   await db.insert({
     name: 'David',
@@ -244,6 +274,9 @@ async function main() {
     ne: null,
   })
   console.log('Has test field:', withTest)
+
+  // Close when done
+  await db.close()
 }
 
 main()
