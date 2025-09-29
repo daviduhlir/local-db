@@ -1,3 +1,3 @@
 export * from './LocalDB'
-export * from './LocalDbIndex'
+export * from './LocalDBIndexGetter'
 export * from './interfaces'

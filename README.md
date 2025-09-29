@@ -76,7 +76,7 @@ const id = await db.insert({
 })
 ```
 
-#### `getOne(id: string): Promise<LocalDbEntityWithId<T> | null>`
+#### `getOne(id: string): Promise<LocalDBEntityWithId<T> | null>`
 
 Get a single document by ID.
 
@@ -84,7 +84,7 @@ Get a single document by ID.
 const user = await db.getOne(id)
 ```
 
-#### `get(ids: string[]): Promise<LocalDbEntityWithId<T>[]>`
+#### `get(ids: string[]): Promise<LocalDBEntityWithId<T>[]>`
 
 Get multiple documents by IDs.
 
@@ -138,7 +138,7 @@ await db.remapIndex()
 
 Once you get an index using `getIndex()`, you can use these methods:
 
-#### `get(value: any): Promise<LocalDbEntityWithId<T>[]>`
+#### `get(value: any): Promise<LocalDBEntityWithId<T>[]>`
 
 Get all documents where the indexed field equals the value.
 
@@ -146,7 +146,7 @@ Get all documents where the indexed field equals the value.
 const davids = await db.getIndex('name').get('David')
 ```
 
-#### `getOne(value: any): Promise<LocalDbEntityWithId<T> | null>`
+#### `getOne(value: any): Promise<LocalDBEntityWithId<T> | null>`
 
 Get the first document where the indexed field equals the value.
 
@@ -162,7 +162,7 @@ Check if any document has the indexed field equal to the value.
 const hasDavid = await db.getIndex('name').exists('David')
 ```
 
-#### `query(options: LocalDbIterator): Promise<LocalDbEntityWithId<T>[]>`
+#### `query(options: LocalDBIterator): Promise<LocalDBEntityWithId<T>[]>`
 
 Query documents using range operators.
 

@@ -1,9 +1,10 @@
 import { Level } from 'level'
-import { LocalDbEntity, LocalDbEntityWithId, LocalDbIdType } from './interfaces'
+import { LocalDBEntity, LocalDBEntityWithId, LocalDBIdType } from './interfaces'
 import { FILES } from './constants'
 import * as path from 'path'
 import { createRandomId, levelDbAsyncIterable } from './utils'
-import { friendMethodsSymbolAddItem, friendMethodsSymbolRemapIndex, friendMethodsSymbolRemoveItem, LocalDbIndex, LocalDBIndexGetter } from './LocalDbIndex'
+import { friendMethodsSymbolAddItem, friendMethodsSymbolRemapIndex, friendMethodsSymbolRemoveItem, LocalDBIndex } from './LocalDBIndex'
+import { LocalDBIndexGetter } from './LocalDBIndexGetter'
 
 export interface LocalDBOptionsIndexes {
   [key: string]: {
@@ -22,16 +23,16 @@ export interface LocalDBOptions<I extends LocalDBOptionsIndexes> {
  *  Main class for local database
  *
  */
-export class LocalDB<T extends LocalDbEntity, I extends LocalDBOptionsIndexes> {
-  private db: Level<string, LocalDbEntityWithId<T>>
-  private indexes: Record<string, LocalDbIndex<T, any>> = {}
+export class LocalDB<T extends LocalDBEntity, I extends LocalDBOptionsIndexes> {
+  private db: Level<string, LocalDBEntityWithId<T>>
+  private indexes: Record<string, LocalDBIndex<T, any>> = {}
   private indexGetters: Record<string, LocalDBIndexGetter<T>> = {}
 
   constructor(dbPath: string, options: LocalDBOptions<I> = {}) {
     this.db = new Level(path.join(dbPath, FILES.DATA_DB), { valueEncoding: 'json' })
     if (options.indexes) {
       for (const [indexName, indexDef] of Object.entries(options.indexes)) {
-        this.indexes[indexName] = new LocalDbIndex<T, any>(dbPath, indexDef.path)
+        this.indexes[indexName] = new LocalDBIndex<T, any>(dbPath, indexDef.path)
         this.indexGetters[indexName] = new LocalDBIndexGetter(this.db, this.indexes[indexName])
       }
     }
@@ -41,7 +42,7 @@ export class LocalDB<T extends LocalDbEntity, I extends LocalDBOptionsIndexes> {
     return this.indexGetters[indexName as string]
   }
 
-  async exists(id: LocalDbIdType): Promise<boolean> {
+  async exists(id: LocalDBIdType): Promise<boolean> {
     try {
       const data = await this.db.get(id)
       return typeof data === 'object' && data !== null
@@ -50,16 +51,16 @@ export class LocalDB<T extends LocalDbEntity, I extends LocalDBOptionsIndexes> {
     }
   }
 
-  async getOne(id: string): Promise<LocalDbEntityWithId<T> | null> {
+  async getOne(id: string): Promise<LocalDBEntityWithId<T> | null> {
     const data = await this.db.get(id)
     return (typeof data === 'object' && data !== null) ? { ...data, $id: id } : null
   }
 
-  async get(ids: string[]): Promise<LocalDbEntityWithId<T>[]> {
+  async get(ids: string[]): Promise<LocalDBEntityWithId<T>[]> {
     return this.db.getMany(ids)
   }
 
-  async insert(data: T): Promise<LocalDbIdType> {
+  async insert(data: T): Promise<LocalDBIdType> {
     const id = createRandomId()
     const value = {
       ...data,
