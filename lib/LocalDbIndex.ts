@@ -32,6 +32,11 @@ export class LocalDBIndex<T extends LocalDBEntity, K extends LocalDBIndexableTyp
     this.dbBackward = new Level(path.join(dbPath, dbFilenameBackward), { valueEncoding: 'json' })
   }
 
+  public async close() {
+    await this.dbForward.close()
+    await this.dbBackward.close()
+  }
+
   public getIndexName() {
     return this.indexName
   }

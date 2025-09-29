@@ -42,6 +42,13 @@ export class LocalDB<T extends LocalDBEntity, I extends LocalDBOptionsIndexes> {
     }
   }
 
+  public async close() {
+    await this.db.close()
+    for(const index of Object.values(this.indexes)) {
+      await index.close()
+    }
+  }
+
   public getIndex(indexName: keyof I): LocalDBIndexGetter<T> {
     return this.indexGetters[indexName as string]
   }
@@ -61,22 +68,23 @@ export class LocalDB<T extends LocalDBEntity, I extends LocalDBOptionsIndexes> {
   }
 
   async get(ids: string[]): Promise<LocalDBEntityWithId<T>[]> {
+    if (!ids.length) {
+      return []
+    }
     return this.db.getMany(ids)
   }
 
   async insert(data: T): Promise<LocalDBIdType> {
-    return SharedMutex.lockMultiAccess(`${this.baseKey}`, async () => {
-      const id = createRandomId()
-      const value = {
-        ...data,
-        $id: id,
-      }
-      await this.db.put(id, value)
-      for(const index of Object.values(this.indexes)) {
-        await index[friendMethodsSymbolAddItem](value)
-      }
-      return id
-    })
+    const id = createRandomId()
+    const value = {
+      ...data,
+      $id: id,
+    }
+    await this.db.put(id, value)
+    for(const index of Object.values(this.indexes)) {
+      await index[friendMethodsSymbolAddItem](value)
+    }
+    return id
   }
 
   async edit(id: string, data: Partial<T>): Promise<void> {
@@ -99,6 +107,9 @@ export class LocalDB<T extends LocalDBEntity, I extends LocalDBOptionsIndexes> {
 
   async delete(id: string): Promise<void> {
     return SharedMutex.lockSingleAccess(`${this.baseKey}/${id}`, async () => {
+      if (!await this.exists(id)) {
+        throw new Error('Item not found')
+      }
       await this.db.del(id)
       for(const index of Object.values(this.indexes)) {
         await index[friendMethodsSymbolRemoveItem](id)
