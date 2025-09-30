@@ -1,7 +1,7 @@
-import { Level } from 'level'
 import { LocalDBEntity, LocalDBEntityWithId, LocalDBIndexableType, LocalDBItterator } from './interfaces'
 import { LocalDBIndex } from './LocalDBIndex'
 import { SharedMutex } from '@david.uhlir/mutex'
+import { LevelDB } from './DB/LevelDB'
 
 /**
  *
@@ -9,7 +9,7 @@ import { SharedMutex } from '@david.uhlir/mutex'
  *
  */
 export class LocalDBIndexGetter<T extends LocalDBEntity> {
-  constructor(private readonly baseKey: string, private db: Level<string, LocalDBEntityWithId<T>>, readonly index: LocalDBIndex<T, any>) {}
+  constructor(private readonly baseKey: string, private db: LevelDB<string, LocalDBEntityWithId<T>>, readonly index: LocalDBIndex<T, any>) {}
 
   public async exists(value: any): Promise<boolean> {
     return SharedMutex.lockMultiAccess(`${this.baseKey}/index/${this.index.getIndexName()}`, async () => {

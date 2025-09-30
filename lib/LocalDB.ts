@@ -6,6 +6,7 @@ import { createRandomId, hashString, levelDbAsyncIterable } from './utils'
 import { friendMethodsSymbolAddItem, friendMethodsSymbolRemapIndex, friendMethodsSymbolRemoveItem, LocalDBIndex } from './LocalDBIndex'
 import { LocalDBIndexGetter } from './LocalDBIndexGetter'
 import { SharedMutex } from '@david.uhlir/mutex'
+import { LevelDB } from './DB/LevelDB'
 
 export interface LocalDBOptionsIndexes {
   [key: string]: {
@@ -26,7 +27,7 @@ export interface LocalDBOptions<I extends LocalDBOptionsIndexes> {
  *
  */
 export class LocalDB<T extends LocalDBEntity, I extends LocalDBOptionsIndexes> {
-  private db: Level<string, LocalDBEntityWithId<T>>
+  private db: LevelDB<string, LocalDBEntityWithId<T>>
   private indexes: Record<string, LocalDBIndex<T, any>> = {}
   private indexGetters: Record<string, LocalDBIndexGetter<T>> = {}
   private baseKey: string
@@ -36,7 +37,8 @@ export class LocalDB<T extends LocalDBEntity, I extends LocalDBOptionsIndexes> {
   }
 
   public async open() {
-    this.db = new Level(path.join(this.dbPath, FILES.DATA_DB), { valueEncoding: 'json' })
+    this.db = new LevelDB(this.baseKey, path.join(this.dbPath, FILES.DATA_DB))
+    await this.db.open()
     if (this.options.indexes) {
       for (const [indexName, indexDef] of Object.entries(this.options.indexes)) {
         this.indexes[indexName] = new LocalDBIndex<T, any>(this.baseKey, this.dbPath, indexDef.path)
@@ -122,9 +124,10 @@ export class LocalDB<T extends LocalDBEntity, I extends LocalDBOptionsIndexes> {
   }
 
   async remapIndex(): Promise<void> {
+    const items = await this.db.getAll()
     return SharedMutex.lockSingleAccess(`${this.baseKey}`, async () => {
       for (const index of Object.values(this.indexes)) {
-        await index[friendMethodsSymbolRemapIndex](levelDbAsyncIterable(this.db))
+        await index[friendMethodsSymbolRemapIndex](items)
       }
     })
   }

@@ -7,6 +7,7 @@ import { hashString, levelDbAsyncIterable } from './utils'
 import * as charwise from 'charwise'
 import { SharedMutex } from '@david.uhlir/mutex'
 import { promises as fs } from 'fs'
+import { LevelDB } from './DB/LevelDB'
 
 export const friendMethodsSymbolAddItem = Symbol('addItem')
 export const friendMethodsSymbolRemapIndex = Symbol('remapIndex')
@@ -22,14 +23,14 @@ export type LocalDBIndexItem = { ids: LocalDBIdType[] }
  */
 
 export class LocalDBIndex<T extends LocalDBEntity, K extends LocalDBIndexableType> {
-  private dbForward: Level<string, LocalDBIndexItem>
-  private dbBackward: Level<LocalDBIdType, string>
+  private dbForward: LevelDB<string, LocalDBIndexItem>
+  private dbBackward: LevelDB<LocalDBIdType, string>
   private indexName: string
   constructor(protected baseKey: string, readonly dbPath: string, readonly indexKeyPath: string) {
     this.indexName = hashString(indexKeyPath)
   }
 
-  public async open(parentDb: Level<string, LocalDBEntityWithId<T>>) {
+  public async open(parentDb: LevelDB<string, LocalDBEntityWithId<T>>) {
     const dbFilenameForward = FILES.INDEX_DB.replace('{indexName}', this.indexName).replace('{orientation}', 'forward')
     const dbFilenameBackward = FILES.INDEX_DB.replace('{indexName}', this.indexName).replace('{orientation}', 'backward')
     const forwardPath = path.join(this.dbPath, dbFilenameForward)
@@ -42,11 +43,13 @@ export class LocalDBIndex<T extends LocalDBEntity, K extends LocalDBIndexableTyp
     }
 
     await fs.mkdir(this.dbPath, { recursive: true })
-    this.dbForward = new Level(forwardPath, { valueEncoding: 'json' })
-    this.dbBackward = new Level(backwardPath, { valueEncoding: 'json' })
+    this.dbForward = new LevelDB(this.baseKey + this.indexName + 'forward', forwardPath)
+    await this.dbForward.open()
+    this.dbBackward = new LevelDB(this.baseKey + this.indexName + 'backward',backwardPath)
+    await this.dbBackward.open()
 
     if (needsRemap) {
-      await this[friendMethodsSymbolRemapIndex](levelDbAsyncIterable(parentDb))
+      await this[friendMethodsSymbolRemapIndex](await parentDb.getAll())
     }
   }
 
@@ -89,14 +92,9 @@ export class LocalDBIndex<T extends LocalDBEntity, K extends LocalDBIndexableTyp
     }
 
     return SharedMutex.lockMultiAccess(`${this.baseKey}/index/${this.indexName}`, async () => {
-      const results = []
-      for await (const [key, value] of this.dbForward.iterator(usedItteratorOptions)) {
-        if (customOptions.eq && key !== customOptions.eq) {
-          continue
-        }
-        if (customOptions.ne && key === customOptions.ne) {
-          continue
-        }
+      const resultsRaw = await this.dbForward.query(usedItteratorOptions, customOptions)
+      const results: LocalDBIdType[] = []
+      for await (const value of resultsRaw) {
         results.push(...value.ids)
       }
       return results
@@ -145,18 +143,18 @@ export class LocalDBIndex<T extends LocalDBEntity, K extends LocalDBIndexableTyp
     })
   }
 
-  public async [friendMethodsSymbolRemapIndex](items: AsyncIterable<LocalDBEntityWithId<T>>) {
+  public async [friendMethodsSymbolRemapIndex](items: [string, LocalDBEntityWithId<T>][]) {
     return SharedMutex.lockMultiAccess(`${this.baseKey}/index/${this.indexName}`, async () => {
       // Remap whole index from AsyncIterable
       await this.dbForward.clear()
       await this.dbBackward.clear()
-      for await (const item of items) {
-        const value = getByExpression(item, this.indexKeyPath)
+      for (const item of items) {
+        const value = getByExpression(item[1], this.indexKeyPath)
         const k = LocalDBIndex.serializeKeyByValue(value)
         const ids = (await this.dbForward.get(k))?.ids || []
-        ids.push(item.$id)
+        ids.push(item[0])
         await this.dbForward.put(k, { ids })
-        await this.dbBackward.put(item.$id, k)
+        await this.dbBackward.put(item[0], k)
       }
     })
   }
