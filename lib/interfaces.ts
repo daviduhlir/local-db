@@ -14,4 +14,12 @@ export interface JsonDBItterator<T = any> {
   lte?: T
   eq?: T
   ne?: T
+  in?: T[]
+  nin?: T[]
+
+  // for array types
+  includes?: T
+  excludes?: T
+  empty?: boolean
+  notEmpty?: boolean
 }

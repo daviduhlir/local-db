@@ -288,6 +288,46 @@ describe('Index Query Tests', () => {
     })
   })
 
+  describe('query - in and nin operators', () => {
+    it('should query with in operator for strings', async () => {
+      const results = await db.getIndex('name').query({ in: ['David', 'John', 'NonExistent'] })
+
+      expect(results).to.have.lengthOf(2)
+      const names = results.map(r => r.name)
+      expect(names).to.include.members(['David', 'John'])
+    })
+
+    it('should query with in operator for numbers', async () => {
+      const results = await db.getIndex('age').query({ in: [30, 50, 70] })
+
+      expect(results).to.have.lengthOf(3)
+      const ages = results.map(r => r.info.age)
+      expect(ages).to.include.members([30, 50, 70])
+    })
+
+    it('should query with nin operator', async () => {
+      const results = await db.getIndex('name').query({ nin: ['David', 'John'] })
+
+      expect(results).to.have.lengthOf(3)
+      const names = results.map(r => r.name)
+      expect(names).to.include.members(['Jane', 'Jack', 'Jill'])
+      expect(names).to.not.include('David')
+      expect(names).to.not.include('John')
+    })
+
+    it('should return empty array when in matches nothing', async () => {
+      const results = await db.getIndex('name').query({ in: ['NonExistent1', 'NonExistent2'] })
+
+      expect(results).to.have.lengthOf(0)
+    })
+
+    it('should return all when nin matches nothing', async () => {
+      const results = await db.getIndex('name').query({ nin: ['NonExistent'] })
+
+      expect(results).to.have.lengthOf(5)
+    })
+  })
+
   describe('index updates on edit', () => {
     it('should update index when document is edited', async () => {
       const id = (await db.getIndex('name').get('David'))[0].$id

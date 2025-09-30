@@ -95,6 +95,24 @@ export class JsonDBIndex<T extends JsonDBEntity, K extends JsonDBIndexableType =
     if (options.hasOwnProperty('ne')) {
       usedItteratorOptions.ne = serializeKeyByValue(options.ne)
     }
+    if (options.hasOwnProperty('in')) {
+      usedItteratorOptions.in = options.in.map(serializeKeyByValue)
+    }
+    if (options.hasOwnProperty('nin')) {
+      usedItteratorOptions.nin = options.nin.map(serializeKeyByValue)
+    }
+    if (options.hasOwnProperty('includes')) {
+      usedItteratorOptions.includes = serializeKeyByValue(options.includes)
+    }
+    if (options.hasOwnProperty('excludes')) {
+      usedItteratorOptions.excludes = serializeKeyByValue(options.excludes)
+    }
+    if (options.hasOwnProperty('empty')) {
+      usedItteratorOptions.empty = options.empty
+    }
+    if (options.hasOwnProperty('notEmpty')) {
+      usedItteratorOptions.notEmpty = options.notEmpty
+    }
     return this.readIndex(async (data) => {
       const results: JsonDBIdType[] = []
       for (const k of Object.keys(data.forward)) {
@@ -115,6 +133,45 @@ export class JsonDBIndex<T extends JsonDBEntity, K extends JsonDBIndexableType =
         }
         if (usedItteratorOptions.ne && k === usedItteratorOptions.ne) {
           continue
+        }
+        if (usedItteratorOptions.in && !usedItteratorOptions.in.includes(k)) {
+          continue
+        }
+        if (usedItteratorOptions.nin && usedItteratorOptions.nin.includes(k)) {
+          continue
+        }
+
+        if (
+          usedItteratorOptions.hasOwnProperty('includes') ||
+          usedItteratorOptions.hasOwnProperty('excludes') ||
+          usedItteratorOptions.hasOwnProperty('empty') ||
+          usedItteratorOptions.hasOwnProperty('notEmpty')
+        ) {
+          const ks = k.split(';')
+          const isEmpty = ks.length === 1 && ks[0] === ''
+
+          if (usedItteratorOptions.hasOwnProperty('includes') && !ks.includes(usedItteratorOptions.includes)) {
+            continue
+          }
+          if (usedItteratorOptions.hasOwnProperty('excludes') && ks.includes(usedItteratorOptions.excludes)) {
+            continue
+          }
+          if (usedItteratorOptions.hasOwnProperty('empty')) {
+            if (usedItteratorOptions.empty && !isEmpty) {
+              continue
+            }
+            if (!usedItteratorOptions.empty && isEmpty) {
+              continue
+            }
+          }
+          if (usedItteratorOptions.hasOwnProperty('notEmpty')) {
+            if (usedItteratorOptions.notEmpty && isEmpty) {
+              continue
+            }
+            if (!usedItteratorOptions.notEmpty && !isEmpty) {
+              continue
+            }
+          }
         }
         results.push(...data.forward[k])
       }
@@ -144,7 +201,7 @@ export class JsonDBIndex<T extends JsonDBEntity, K extends JsonDBIndexableType =
   public async [friendMethodsSymbolRemoveItem](id: JsonDBIdType) {
     return this.modifyIndex(async (data) => {
       const k = data.backward[id]
-      if (!k) {
+      if (!k && k !== '') {
         return data
       }
       const ids = data.forward[k] || []
@@ -233,26 +290,29 @@ export class JsonDBIndex<T extends JsonDBEntity, K extends JsonDBIndexableType =
 }
 
 function serializeKeyByValue(value: any): string {
-    if (typeof value === 'undefined') {
-      return hashString('undefined')
-    }
-    if (value instanceof Date) {
-      return charwise.encode(value.getTime())
-    }
-    if (typeof value === 'string') {
-      return value
-    }
-    if (typeof value === 'number') {
-      return charwise.encode(value)
-    }
-    if (typeof value === 'boolean') {
-      return value ? '1' : '0'
-    }
-    if (value === null) {
-      return hashString('null')
-    }
-    if (typeof value === 'object') {
-      return hashString(JSON.stringify(value))
-    }
-    throw new Error('Unknown index key type')
+  if (Array.isArray(value)) {
+    return value.map(serializeKeyByValue).join(';')
   }
+  if (typeof value === 'undefined') {
+    return hashString('undefined')
+  }
+  if (value instanceof Date) {
+    return charwise.encode(value.getTime())
+  }
+  if (typeof value === 'string') {
+    return value
+  }
+  if (typeof value === 'number') {
+    return charwise.encode(value)
+  }
+  if (typeof value === 'boolean') {
+    return value ? '1' : '0'
+  }
+  if (value === null) {
+    return hashString('null')
+  }
+  if (typeof value === 'object') {
+    return hashString(JSON.stringify(value))
+  }
+  throw new Error('Unknown index key type')
+}
