@@ -3,6 +3,7 @@ import * as cluster from 'cluster'
 import { IpcMethodHandler } from "@david.uhlir/ipc-method";
 
 export class LevelDB<K, T> {
+  private referenceCounter = 0
   private db: Level<K, T>
 
   constructor(readonly unique: string, readonly dbPath: string) {
@@ -10,10 +11,16 @@ export class LevelDB<K, T> {
   }
 
   async open() {
+    if (this.referenceCounter++ > 0) {
+      return
+    }
     await this.db.open()
   }
 
   async close() {
+    if (--this.referenceCounter > 0) {
+      return
+    }
     await this.db.close()
   }
 
@@ -65,16 +72,25 @@ export class LevelDB<K, T> {
 }
 
 export class LevelDBCluster {
+  static handler = new IpcMethodHandler(['__local-db-master'], {
+    getInstance: LevelDBCluster.getInstance,
+  })
+
   static dbs: Record<string, any> = {}
   public static async getInstance(unique: string, dbPath: string): Promise<LevelDB<any, any>> {
-    if (!cluster.default.isWorker) {
-      LevelDBCluster.dbs[unique] = new LevelDB(unique, dbPath)
+    if (LevelDBCluster.dbs[unique]) {
       await LevelDBCluster.dbs[unique].open()
-      new IpcMethodHandler(['__local-db-' + unique], LevelDBCluster.dbs[unique], { messageSizeLimit: 1024 })
+      return LevelDBCluster.dbs[unique]
+    }
+    if (!(cluster as any).isWorker) {
+      LevelDBCluster.dbs[unique] = new LevelDB(unique, dbPath)
+      new IpcMethodHandler(['__local-db-' + unique], LevelDBCluster.dbs[unique], { messageSizeLimit: 1024 * 1024 * 10 })
     } else {
-      const handler = new IpcMethodHandler(['__local-db-' + unique], { messageSizeLimit: 1024 })
+      await LevelDBCluster.handler.as<any>().getInstance(unique, dbPath)
+      const handler = new IpcMethodHandler(['__local-db-' + unique], { messageSizeLimit: 1024 * 1024 * 10 })
       LevelDBCluster.dbs[unique] = handler.as<LevelDB<any, any>>()
     }
+    await LevelDBCluster.dbs[unique].open()
     return LevelDBCluster.dbs[unique]
   }
 }
