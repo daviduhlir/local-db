@@ -95,7 +95,6 @@ pids
 
 # Sources
 ts/**/*.js
-tests/**/*.js
 tests/**/*.d.ts
 
 dump/*.heapsnapshot
