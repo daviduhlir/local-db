@@ -7,7 +7,7 @@ import { hashString, levelDbAsyncIterable } from './utils'
 import * as charwise from 'charwise'
 import { SharedMutex } from '@david.uhlir/mutex'
 import { promises as fs } from 'fs'
-import { LevelDB } from './DB/LevelDB'
+import { LevelDBCluster, LevelDB } from './DB/LevelDB'
 
 export const friendMethodsSymbolAddItem = Symbol('addItem')
 export const friendMethodsSymbolRemapIndex = Symbol('remapIndex')
@@ -43,9 +43,9 @@ export class LocalDBIndex<T extends LocalDBEntity, K extends LocalDBIndexableTyp
     }
 
     await fs.mkdir(this.dbPath, { recursive: true })
-    this.dbForward = new LevelDB(this.baseKey + this.indexName + 'forward', forwardPath)
+    this.dbForward = LevelDBCluster.getInstance(this.baseKey + this.indexName + 'forward', forwardPath)
     await this.dbForward.open()
-    this.dbBackward = new LevelDB(this.baseKey + this.indexName + 'backward',backwardPath)
+    this.dbBackward = LevelDBCluster.getInstance(this.baseKey + this.indexName + 'backward',backwardPath)
     await this.dbBackward.open()
 
     if (needsRemap) {

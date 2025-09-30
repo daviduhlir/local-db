@@ -1,4 +1,6 @@
 import { IteratorOptions, Level } from "level";
+import * as cluster from 'cluster'
+import { IpcMethodHandler } from "@david.uhlir/ipc-method";
 
 export class LevelDB<K, T> {
   private db: Level<K, T>
@@ -59,5 +61,19 @@ export class LevelDB<K, T> {
     }
     await iterator.close()
     return items
+  }
+}
+
+export class LevelDBCluster {
+  static dbs: Record<string, any> = {}
+  public static getInstance(unique: string, dbPath: string): LevelDB<any, any> {
+    if (!cluster.default.isWorker) {
+      LevelDBCluster.dbs[unique] = new LevelDB(unique, dbPath)
+      new IpcMethodHandler(['__local-db-' + unique], LevelDBCluster.dbs[unique], { messageSizeLimit: 1024 })
+    } else {
+      const handler = new IpcMethodHandler(['__local-db-' + unique], { messageSizeLimit: 1024 })
+      LevelDBCluster.dbs[unique] = handler.as<LevelDB<any, any>>()
+    }
+    return LevelDBCluster.dbs[unique]
   }
 }

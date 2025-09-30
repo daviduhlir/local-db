@@ -6,7 +6,7 @@ import { createRandomId, hashString, levelDbAsyncIterable } from './utils'
 import { friendMethodsSymbolAddItem, friendMethodsSymbolRemapIndex, friendMethodsSymbolRemoveItem, LocalDBIndex } from './LocalDBIndex'
 import { LocalDBIndexGetter } from './LocalDBIndexGetter'
 import { SharedMutex } from '@david.uhlir/mutex'
-import { LevelDB } from './DB/LevelDB'
+import { LevelDB, LevelDBCluster } from './DB/LevelDB'
 
 export interface LocalDBOptionsIndexes {
   [key: string]: {
@@ -37,7 +37,7 @@ export class LocalDB<T extends LocalDBEntity, I extends LocalDBOptionsIndexes> {
   }
 
   public async open() {
-    this.db = new LevelDB(this.baseKey, path.join(this.dbPath, FILES.DATA_DB))
+    this.db = LevelDBCluster.getInstance(this.baseKey, path.join(this.dbPath, FILES.DATA_DB))
     await this.db.open()
     if (this.options.indexes) {
       for (const [indexName, indexDef] of Object.entries(this.options.indexes)) {
