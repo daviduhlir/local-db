@@ -341,7 +341,7 @@ type UserWithId = User & { $id: string }
 You can manage multiple related databases using `JsonDB`:
 
 ```typescript
-import { JsonDB, defineDb } from '@david.uhlir/local-db'
+import { JsonDB, repository } from '@david.uhlir/local-db'
 
 interface User {
   name: string
@@ -356,12 +356,12 @@ interface Post {
 const db = new JsonDB({
   path: './data',
   databases: {
-    users: defineDb<User>({
+    users: repository<User>({
       indexes: {
         name: { path: 'name' },
       },
     }),
-    posts: defineDb<Post>({
+    posts: repository<Post>({
       indexes: {
         userId: { path: 'userId' },
       },
@@ -370,8 +370,8 @@ const db = new JsonDB({
 })
 
 // Access individual databases
-const usersDb = db.getDatabase('users')
-const postsDb = db.getDatabase('posts')
+const usersDb = db.getRepository('users')
+const postsDb = db.getRepository('posts')
 ```
 
 ## Indexable Types
