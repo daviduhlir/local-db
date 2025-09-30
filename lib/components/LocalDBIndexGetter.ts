@@ -1,7 +1,7 @@
-import { LocalDBEntity, LocalDBEntityWithId, LocalDBIndexableType, LocalDBItterator } from './interfaces'
+import { LocalDBEntity, LocalDBEntityWithId, LocalDBIndexableType, LocalDBItterator } from '../interfaces'
 import { LocalDBIndex } from './LocalDBIndex'
 import { SharedMutex } from '@david.uhlir/mutex'
-import { LevelDB } from './DB/LevelDB'
+import { LevelDB } from './LevelDB'
 
 /**
  *

@@ -1,133 +1,57 @@
-import { Level } from 'level'
-import { LocalDBEntity, LocalDBEntityWithId, LocalDBIdType } from './interfaces'
-import { FILES } from './constants'
-import * as path from 'path'
-import { createRandomId, hashString, levelDbAsyncIterable } from './utils'
-import { friendMethodsSymbolAddItem, friendMethodsSymbolRemapIndex, friendMethodsSymbolRemoveItem, LocalDBIndex } from './LocalDBIndex'
-import { LocalDBIndexGetter } from './LocalDBIndexGetter'
-import { SharedMutex } from '@david.uhlir/mutex'
-import { LevelDB, LevelDBCluster } from './DB/LevelDB'
+import { LocalDBEntity } from './interfaces'
+import { LocalDBRepository, LocalDBOptions } from './LocalDBRepository'
 
-export interface LocalDBOptionsIndexes {
-  [key: string]: {
-    path: string
-  }
+export class LocalDBDefinition<T extends LocalDBEntity> {
+  constructor(readonly options: LocalDBOptions<any>) {}
+  declare __entityType?: T;
 }
 
-export interface LocalDBOptions<I extends LocalDBOptionsIndexes> {
-  baseKey?: string
-  indexes?: I
+export interface LocalDBSetsOptionsDatabases {
+  [key: string]: LocalDBDefinition<any>
 }
 
-/**
- *
- * Local DB
- *
- *  Main class for local database
- *
- */
-export class LocalDB<T extends LocalDBEntity, I extends LocalDBOptionsIndexes> {
-  private db: LevelDB<string, LocalDBEntityWithId<T>>
-  private indexes: Record<string, LocalDBIndex<T, any>> = {}
-  private indexGetters: Record<string, LocalDBIndexGetter<T>> = {}
-  private baseKey: string
+export interface LocalDBSetOptions<DBs extends LocalDBSetsOptionsDatabases> {
+  path: string
+  databases: DBs
+}
 
-  constructor(readonly dbPath: string, readonly options: LocalDBOptions<I> = {}) {
-    this.baseKey = options.baseKey || hashString(dbPath)
-  }
+export class LocalDB<DBs extends LocalDBSetsOptionsDatabases> {
+  protected databases: {
+    [K in keyof DBs]: DBs[K] extends LocalDBDefinition<infer T> ? LocalDBRepository<T, any> : never
+  } = {} as any
 
-  public async open() {
-    this.db = await LevelDBCluster.getInstance(this.baseKey, path.join(this.dbPath, FILES.DATA_DB))
-    if (this.options.indexes) {
-      for (const [indexName, indexDef] of Object.entries(this.options.indexes)) {
-        this.indexes[indexName] = new LocalDBIndex<T, any>(this.baseKey, this.dbPath, indexDef.path)
-        await this.indexes[indexName].open(this.db)
-        this.indexGetters[indexName] = new LocalDBIndexGetter(this.baseKey, this.db, this.indexes[indexName])
-      }
-    }
-  }
-
-  public async close() {
-    await this.db.close()
-    for (const index of Object.values(this.indexes)) {
-      await index.close()
-    }
-  }
-
-  public getIndex(indexName: keyof I): LocalDBIndexGetter<T> {
-    return this.indexGetters[indexName as string]
-  }
-
-  async exists(id: LocalDBIdType): Promise<boolean> {
-    try {
-      const data = await this.db.get(id)
-      return typeof data === 'object' && data !== null
-    } catch (e) {
-      return false
-    }
-  }
-
-  async getOne(id: string): Promise<LocalDBEntityWithId<T> | null> {
-    const data = await this.db.get(id)
-    return typeof data === 'object' && data !== null ? { ...data, $id: id } : null
-  }
-
-  async get(ids: string[]): Promise<LocalDBEntityWithId<T>[]> {
-    if (!ids.length) {
-      return []
-    }
-    return this.db.getMany(ids)
-  }
-
-  async insert(data: T): Promise<LocalDBIdType> {
-    const id = createRandomId()
-    const value = {
-      ...data,
-      $id: id,
-    }
-    await this.db.put(id, value)
-    for (const index of Object.values(this.indexes)) {
-      await index[friendMethodsSymbolAddItem](value)
-    }
-    return id
-  }
-
-  async edit(id: string, data: Partial<T>): Promise<void> {
-    return SharedMutex.lockSingleAccess(`${this.baseKey}/${id}`, async () => {
-      const oldData = await this.db.get(id)
-      if (!oldData) {
-        throw new Error('Item not found')
-      }
-      const newData = {
-        ...oldData,
-        ...data,
-      }
-      await this.db.put(id, newData)
-      for (const index of Object.values(this.indexes)) {
-        await index[friendMethodsSymbolRemoveItem](id)
-        await index[friendMethodsSymbolAddItem](newData)
-      }
+  constructor(readonly options: LocalDBSetOptions<DBs>) {
+    const keys = Object.keys(this.options.databases) as Array<keyof DBs>
+    keys.forEach((dbName) => {
+      const def = this.options.databases[dbName]
+      ;(this.databases as any)[dbName] = new LocalDBRepository(this.options.path + '/' + String(dbName), def.options)
     })
   }
 
-  async delete(id: string): Promise<void> {
-    return SharedMutex.lockSingleAccess(`${this.baseKey}/${id}`, async () => {
-      if (!(await this.exists(id))) {
-        throw new Error('Item not found')
-      }
-      await this.db.del(id)
-      for (const index of Object.values(this.indexes)) {
-        await index[friendMethodsSymbolRemoveItem](id)
-      }
-    })
-  }
-
-  async remapIndex(): Promise<void> {
-    const items = await this.db.getAll()
-    return SharedMutex.lockSingleAccess(`${this.baseKey}`, async () => {
-      for (const index of Object.values(this.indexes)) {
-        await index[friendMethodsSymbolRemapIndex](items)
-      }
-    })
+  public getDatabase<Name extends keyof DBs>(
+    name: Name
+  ): DBs[Name] extends LocalDBDefinition<infer T> ? LocalDBRepository<T, any> : never {
+    return this.databases[name]
   }
 }
+
+export function defineDb<T extends LocalDBEntity>(options: LocalDBOptions<any>): LocalDBDefinition<T> {
+  return new LocalDBDefinition(options)
+}
+
+/*
+const t = new LocalDBSet({
+  path: 'test',
+  databases: {
+    test: defineDb<{ name: string; test?: number }>({
+      indexes: {
+        name: {
+          path: 'name',
+        },
+      },
+    }),
+  },
+})
+
+const data = await t.getDatabase('test').getOne('dfw')
+*/

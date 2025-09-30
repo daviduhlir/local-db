@@ -1,12 +1,12 @@
 import { expect } from 'chai'
-import { LocalDB } from '../dist'
+import { LocalDBRepository } from '../dist'
 import * as path from 'path'
 import * as fs from 'fs'
 
 const TEST_DB_PATH = path.join(__dirname, '.test-db-edge-cases')
 
 describe('Edge Cases Tests', () => {
-  let db: LocalDB<any, any>
+  let db: LocalDBRepository<any, any>
 
   beforeEach(async () => {
     // Clean up test database
@@ -14,7 +14,7 @@ describe('Edge Cases Tests', () => {
       fs.rmSync(TEST_DB_PATH, { recursive: true, force: true })
     }
 
-    db = new LocalDB(TEST_DB_PATH, {
+    db = new LocalDBRepository(TEST_DB_PATH, {
       indexes: {
         value: {
           path: 'value',
@@ -438,7 +438,7 @@ describe('Edge Cases Tests', () => {
 
   describe('database without indexes', () => {
     it('should work without any indexes defined', async () => {
-      const simpleDb = new LocalDB(path.join(TEST_DB_PATH, 'simple'))
+      const simpleDb = new LocalDBRepository(path.join(TEST_DB_PATH, 'simple'))
       await simpleDb.open()
 
       const id = await simpleDb.insert({ value: 'test' })

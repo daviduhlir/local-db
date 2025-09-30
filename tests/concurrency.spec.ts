@@ -1,12 +1,12 @@
 import { expect } from 'chai'
-import { LocalDB } from '../dist'
+import { LocalDBRepository } from '../dist'
 import * as path from 'path'
 import * as fs from 'fs'
 
 const TEST_DB_PATH = path.join(__dirname, '.test-db-concurrency')
 
 describe('Concurrency and Lock Tests', () => {
-  let db: LocalDB<any, any>
+  let db: LocalDBRepository<any, any>
 
   beforeEach(async () => {
     // Clean up test database
@@ -14,7 +14,7 @@ describe('Concurrency and Lock Tests', () => {
       fs.rmSync(TEST_DB_PATH, { recursive: true, force: true })
     }
 
-    db = new LocalDB(TEST_DB_PATH, {
+    db = new LocalDBRepository(TEST_DB_PATH, {
       indexes: {
         counter: {
           path: 'counter',

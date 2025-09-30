@@ -1,3 +1,4 @@
 export * from './LocalDB'
-export * from './LocalDBIndexGetter'
+export * from './LocalDBRepository'
+export * from './components/LocalDBIndexGetter'
 export * from './interfaces'

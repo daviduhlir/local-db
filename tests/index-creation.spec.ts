@@ -1,5 +1,5 @@
 import { expect } from 'chai'
-import { LocalDB } from '../dist'
+import { LocalDBRepository } from '../dist'
 import * as path from 'path'
 import * as fs from 'fs'
 
@@ -17,7 +17,7 @@ describe('Index Creation Tests', () => {
     this.timeout(10000)
 
     // Step 1: Create DB without indexes and insert data
-    const dbWithoutIndexes = new LocalDB(TEST_DB_PATH)
+    const dbWithoutIndexes = new LocalDBRepository(TEST_DB_PATH)
     await dbWithoutIndexes.open()
 
     const id1 = await dbWithoutIndexes.insert({
@@ -41,7 +41,7 @@ describe('Index Creation Tests', () => {
     await dbWithoutIndexes.close()
 
     // Step 2: Reopen DB with index definitions
-    const dbWithIndexes = new LocalDB(TEST_DB_PATH, {
+    const dbWithIndexes = new LocalDBRepository(TEST_DB_PATH, {
       indexes: {
         name: {
           path: 'name',
@@ -85,7 +85,7 @@ describe('Index Creation Tests', () => {
     this.timeout(10000)
 
     // Step 1: Create DB with one index
-    const dbWithOneIndex = new LocalDB(TEST_DB_PATH, {
+    const dbWithOneIndex = new LocalDBRepository(TEST_DB_PATH, {
       indexes: {
         name: {
           path: 'name',
@@ -111,7 +111,7 @@ describe('Index Creation Tests', () => {
     await dbWithOneIndex.close()
 
     // Step 2: Reopen with additional indexes
-    const dbWithMoreIndexes = new LocalDB(TEST_DB_PATH, {
+    const dbWithMoreIndexes = new LocalDBRepository(TEST_DB_PATH, {
       indexes: {
         name: {
           path: 'name',
@@ -147,7 +147,7 @@ describe('Index Creation Tests', () => {
     this.timeout(10000)
 
     // Step 1: Create DB without indexes
-    const dbWithoutIndexes = new LocalDB(TEST_DB_PATH)
+    const dbWithoutIndexes = new LocalDBRepository(TEST_DB_PATH)
     await dbWithoutIndexes.open()
 
     await dbWithoutIndexes.insert({
@@ -173,7 +173,7 @@ describe('Index Creation Tests', () => {
     await dbWithoutIndexes.close()
 
     // Step 2: Reopen with nested indexes
-    const dbWithIndexes = new LocalDB(TEST_DB_PATH, {
+    const dbWithIndexes = new LocalDBRepository(TEST_DB_PATH, {
       indexes: {
         age: {
           path: 'info.age',
@@ -202,7 +202,7 @@ describe('Index Creation Tests', () => {
     this.timeout(15000)
 
     // Step 1: Insert 100 documents without indexes
-    const dbWithoutIndexes = new LocalDB(TEST_DB_PATH)
+    const dbWithoutIndexes = new LocalDBRepository(TEST_DB_PATH)
     await dbWithoutIndexes.open()
 
     for (let i = 0; i < 100; i++) {
@@ -216,7 +216,7 @@ describe('Index Creation Tests', () => {
     await dbWithoutIndexes.close()
 
     // Step 2: Reopen with indexes
-    const dbWithIndexes = new LocalDB(TEST_DB_PATH, {
+    const dbWithIndexes = new LocalDBRepository(TEST_DB_PATH, {
       indexes: {
         counter: {
           path: 'counter',
@@ -250,7 +250,7 @@ describe('Index Creation Tests', () => {
     this.timeout(10000)
 
     // Step 1: Insert data with null/undefined values
-    const dbWithoutIndexes = new LocalDB(TEST_DB_PATH)
+    const dbWithoutIndexes = new LocalDBRepository(TEST_DB_PATH)
     await dbWithoutIndexes.open()
 
     await dbWithoutIndexes.insert({
@@ -271,7 +271,7 @@ describe('Index Creation Tests', () => {
     await dbWithoutIndexes.close()
 
     // Step 2: Reopen with index on status
-    const dbWithIndexes = new LocalDB(TEST_DB_PATH, {
+    const dbWithIndexes = new LocalDBRepository(TEST_DB_PATH, {
       indexes: {
         status: {
           path: 'status',
@@ -302,7 +302,7 @@ describe('Index Creation Tests', () => {
     this.timeout(10000)
 
     // Step 1: Create DB without indexes and add initial data
-    const dbWithoutIndexes = new LocalDB(TEST_DB_PATH)
+    const dbWithoutIndexes = new LocalDBRepository(TEST_DB_PATH)
     await dbWithoutIndexes.open()
 
     await dbWithoutIndexes.insert({
@@ -313,7 +313,7 @@ describe('Index Creation Tests', () => {
     await dbWithoutIndexes.close()
 
     // Step 2: Reopen with indexes
-    const dbWithIndexes = new LocalDB(TEST_DB_PATH, {
+    const dbWithIndexes = new LocalDBRepository(TEST_DB_PATH, {
       indexes: {
         name: {
           path: 'name',
