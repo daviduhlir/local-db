@@ -66,9 +66,10 @@ export class LevelDB<K, T> {
 
 export class LevelDBCluster {
   static dbs: Record<string, any> = {}
-  public static getInstance(unique: string, dbPath: string): LevelDB<any, any> {
+  public static async getInstance(unique: string, dbPath: string): Promise<LevelDB<any, any>> {
     if (!cluster.default.isWorker) {
       LevelDBCluster.dbs[unique] = new LevelDB(unique, dbPath)
+      await LevelDBCluster.dbs[unique].open()
       new IpcMethodHandler(['__local-db-' + unique], LevelDBCluster.dbs[unique], { messageSizeLimit: 1024 })
     } else {
       const handler = new IpcMethodHandler(['__local-db-' + unique], { messageSizeLimit: 1024 })

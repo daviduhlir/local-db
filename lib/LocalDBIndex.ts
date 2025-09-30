@@ -43,10 +43,8 @@ export class LocalDBIndex<T extends LocalDBEntity, K extends LocalDBIndexableTyp
     }
 
     await fs.mkdir(this.dbPath, { recursive: true })
-    this.dbForward = LevelDBCluster.getInstance(this.baseKey + this.indexName + 'forward', forwardPath)
-    await this.dbForward.open()
-    this.dbBackward = LevelDBCluster.getInstance(this.baseKey + this.indexName + 'backward',backwardPath)
-    await this.dbBackward.open()
+    this.dbForward = await LevelDBCluster.getInstance(this.baseKey + this.indexName + 'forward', forwardPath)
+    this.dbBackward = await LevelDBCluster.getInstance(this.baseKey + this.indexName + 'backward',backwardPath)
 
     if (needsRemap) {
       await this[friendMethodsSymbolRemapIndex](await parentDb.getAll())

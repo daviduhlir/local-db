@@ -37,8 +37,7 @@ export class LocalDB<T extends LocalDBEntity, I extends LocalDBOptionsIndexes> {
   }
 
   public async open() {
-    this.db = LevelDBCluster.getInstance(this.baseKey, path.join(this.dbPath, FILES.DATA_DB))
-    await this.db.open()
+    this.db = await LevelDBCluster.getInstance(this.baseKey, path.join(this.dbPath, FILES.DATA_DB))
     if (this.options.indexes) {
       for (const [indexName, indexDef] of Object.entries(this.options.indexes)) {
         this.indexes[indexName] = new LocalDBIndex<T, any>(this.baseKey, this.dbPath, indexDef.path)
