@@ -1,4 +1,4 @@
 export const FILES = {
-  DATA_DB: 'data.db',
-  INDEX_DB: 'index-{indexName}.db',
+  ENTITY_DB: '{id}.json',
+  INDEX_DB: 'index-{indexName}.json',
 }

@@ -128,7 +128,6 @@ export class JsonDBIndex<T extends JsonDBEntity, K extends JsonDBIndexableType =
    *
    */
   public async [friendMethodsSymbolAddItem](item: JsonDBEntityWithId<T>) {
-    // TODO make it atomic!
     const value = getByExpression(item, this.indexKeyPath)
     const k = serializeKeyByValue(value)
     return this.modifyIndex(async (data) => {
@@ -213,14 +212,18 @@ export class JsonDBIndex<T extends JsonDBEntity, K extends JsonDBIndexableType =
   }
 
   protected async readIndexData(): Promise<JsonDBIndexedData> {
-    const indexFile = path.join(this.dbPath, FILES.INDEX_DB.replace('{indexName}', this.indexName))
-    if (!await fs.stat(indexFile).catch(() => false)) {
-      return {
-        forward: {},
-        backward: {},
+    try {
+      const indexFile = path.join(this.dbPath, FILES.INDEX_DB.replace('{indexName}', this.indexName))
+      if (!await fs.stat(indexFile).catch(() => false)) {
+        return {
+          forward: {},
+          backward: {},
+        }
       }
+      return JSON.parse(await fs.readFile(indexFile, 'utf8'))
+    } catch(e) {
+      throw new Error(`Error reading index ${this.indexName}`)
     }
-    return JSON.parse(await fs.readFile(indexFile, 'utf8'))
   }
 
   protected async writeIndexData(data: JsonDBIndexedData) {

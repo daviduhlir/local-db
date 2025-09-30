@@ -4,6 +4,7 @@ import { createRandomId, hashString } from '../utils'
 import { SharedMutex } from '@david.uhlir/mutex'
 import { JsonDBEntity, JsonDBEntityWithId, JsonDBIdType } from '../interfaces'
 import { friendMethodsSymbolAddItem, friendMethodsSymbolClearIndex, friendMethodsSymbolRemapIndex, friendMethodsSymbolRemoveItem, JsonDBIndex } from './JsonDBIndex'
+import { FILES } from '../constants'
 
 export interface JsonDBOptionsIndexes {
   [key: string]: {
@@ -50,7 +51,7 @@ export class JsonDBRepository<T extends JsonDBEntity, I extends JsonDBOptionsInd
 
   async exists(id: JsonDBIdType): Promise<boolean> {
     return SharedMutex.lockMultiAccess(`${this.unique}/${id}`, async () => {
-      return !!await fs.stat(path.join(this.dbPath, `${id}.json`)).catch(() => false)
+      return !!await fs.stat(path.join(this.dbPath, FILES.ENTITY_DB.replace('{id}', id))).catch(() => false)
     })
   }
 
@@ -70,7 +71,7 @@ export class JsonDBRepository<T extends JsonDBEntity, I extends JsonDBOptionsInd
     return SharedMutex.lockSingleAccess(`${this.unique}/insert`, async () => {
       const id = createRandomId()
       const item = { ...value, $id: id }
-      await fs.writeFile(path.join(this.dbPath, `${id}.json`), JSON.stringify(item, null, 2))
+      await fs.writeFile(path.join(this.dbPath, FILES.ENTITY_DB.replace('{id}', id)), JSON.stringify(item, null, 2))
       for (const index of Object.values(this.indexes)) {
         await index[friendMethodsSymbolAddItem](item)
       }
@@ -80,26 +81,34 @@ export class JsonDBRepository<T extends JsonDBEntity, I extends JsonDBOptionsInd
 
   async edit(id: JsonDBIdType, value: T) {
     return SharedMutex.lockSingleAccess(`${this.unique}/${id}`, async () => {
-      if (!await fs.stat(path.join(this.dbPath, `${id}.json`)).catch(() => false)) {
+      if (!await fs.stat(path.join(this.dbPath, FILES.ENTITY_DB.replace('{id}', id))).catch(() => false)) {
         throw new Error('Item not found')
       }
-      const data = await fs.readFile(path.join(this.dbPath, `${id}.json`), 'utf8')
-      const oldData = JSON.parse(data)
-      const item = { ...oldData, ...value, $id: id }
-      await fs.writeFile(path.join(this.dbPath, `${id}.json`), JSON.stringify(item))
-      for (const index of Object.values(this.indexes)) {
-        await index[friendMethodsSymbolRemoveItem](id)
-        await index[friendMethodsSymbolAddItem](item)
+      const data = await fs.readFile(path.join(this.dbPath, FILES.ENTITY_DB.replace('{id}', id)), 'utf8')
+      try {
+        const oldData = JSON.parse(data)
+        try {
+          const item = { ...oldData, ...value, $id: id }
+          await fs.writeFile(path.join(this.dbPath, FILES.ENTITY_DB.replace('{id}', id)), JSON.stringify(item, null, 2))
+          for (const index of Object.values(this.indexes)) {
+            await index[friendMethodsSymbolRemoveItem](id)
+            await index[friendMethodsSymbolAddItem](item)
+          }
+        } catch (e) {
+          throw new Error(`Error writing entity ${id}`)
+        }
+      } catch (e) {
+        throw new Error(`Error parsing entity ${id}`)
       }
     })
   }
 
   async delete(id: JsonDBIdType) {
     return SharedMutex.lockSingleAccess(`${this.unique}/${id}`, async () => {
-      if (!await fs.stat(path.join(this.dbPath, `${id}.json`)).catch(() => false)) {
+      if (!await fs.stat(path.join(this.dbPath, FILES.ENTITY_DB.replace('{id}', id))).catch(() => false)) {
         throw new Error('Item not found')
       }
-      await fs.unlink(path.join(this.dbPath, `${id}.json`))
+      await fs.unlink(path.join(this.dbPath, FILES.ENTITY_DB.replace('{id}', id)))
       for (const index of Object.values(this.indexes)) {
         await index[friendMethodsSymbolRemoveItem](id)
       }
@@ -141,10 +150,10 @@ export class JsonDBRepository<T extends JsonDBEntity, I extends JsonDBOptionsInd
    */
   protected async getOneRaw(id: JsonDBIdType): Promise<JsonDBEntityWithId<T> | null> {
     try {
-      if (!await fs.stat(path.join(this.dbPath, `${id}.json`)).catch(() => false)) {
+      if (!await fs.stat(path.join(this.dbPath, FILES.ENTITY_DB.replace('{id}', id))).catch(() => false)) {
         return null
       }
-      const data = await fs.readFile(path.join(this.dbPath, `${id}.json`), 'utf8')
+      const data = await fs.readFile(path.join(this.dbPath, FILES.ENTITY_DB.replace('{id}', id)), 'utf8')
       return JSON.parse(data)
     } catch (e) {
       throw new Error(`Error reading entity ${id}, mixed operations`)
@@ -171,7 +180,7 @@ export class JsonDBRepository<T extends JsonDBEntity, I extends JsonDBOptionsInd
       const files = await fs.readdir(this.dbPath)
       const results: JsonDBEntityWithId<T>[] = []
       for (const file of files) {
-        if (file.endsWith('.json')) {
+        if (file.endsWith('.json') && !file.startsWith('index-')) {
           const data = await fs.readFile(path.join(this.dbPath, file), 'utf8')
           results.push(JSON.parse(data))
         }
