@@ -1,4 +1,4 @@
-const { LocalDBRepository } = require('../dist')
+const { JsonDBRepository } = require('../dist')
 const path = require('path')
 const fs = require('fs')
 const cluster = require('cluster')
@@ -113,7 +113,7 @@ async function master() {
   console.log('[MASTER] Verifying data in DB')
 
   // Verify data
-  const db = new LocalDBRepository(TEST_DB_PATH, {
+  const db = new JsonDBRepository(TEST_DB_PATH, {
     indexes: {
       counter: { path: 'counter' },
       workerId: { path: 'workerId' },
@@ -155,7 +155,7 @@ async function worker() {
   const workerId = process.env.WORKER_ID || '?'
   console.log(`[WORKER ${workerId}] Starting`)
 
-  const db = new LocalDBRepository(TEST_DB_PATH, {
+  const db = new JsonDBRepository(TEST_DB_PATH, {
     indexes: {
       counter: { path: 'counter' },
       workerId: { path: 'workerId' },

@@ -1,14 +1,15 @@
 # @david.uhlir/local-db
 
-A simple, lightweight local JSON database built on LevelDB with support for indexes and queries. Perfect for Node.js applications that need persistent storage without the complexity of a full database system.
+A simple, lightweight local JSON database with support for indexes and queries. Perfect for Node.js applications that need persistent storage without the complexity of a full database system.
 
 ## Features
 
 - **Simple API** - Easy-to-use interface for CRUD operations
+- **JSON file storage** - Human-readable data stored as individual JSON files
 - **Indexed queries** - Create indexes on nested object properties for fast lookups
 - **Range queries** - Support for gt, gte, lt, lte, eq, ne operators
 - **TypeScript support** - Full type definitions included
-- **LevelDB powered** - Reliable, embedded database storage
+- **Thread-safe** - Built-in mutex locking for concurrent access
 - **Nested property indexing** - Index any nested property using dot notation
 
 ## Installation
@@ -20,10 +21,10 @@ npm install @david.uhlir/local-db
 ## Quick Start
 
 ```typescript
-import { LocalDB } from '@david.uhlir/local-db'
+import { JsonDBRepository } from '@david.uhlir/local-db'
 
 // Create a database with indexes
-const db = new LocalDB('./db', {
+const db = new JsonDBRepository('./db', {
   indexes: {
     name: {
       path: 'name',
@@ -58,14 +59,14 @@ await db.close()
 
 ## API Reference
 
-### LocalDB Constructor
+### JsonDBRepository Constructor
 
 ```typescript
-new LocalDB<T, I>(dbPath: string, options?: LocalDBOptions<I>)
+new JsonDBRepository<T, I>(dbPath: string, options?: JsonDBOptions<I>)
 ```
 
 **Parameters:**
-- `dbPath` - Path to the database directory
+- `dbPath` - Path to the database directory (each document stored as `{id}.json`)
 - `options.indexes` - Object defining indexes:
   - `path` - Dot-notation path to the property to index (e.g., `'info.age'`)
 - `options.baseKey` - Optional custom base key for mutex locking (defaults to hash of dbPath)
@@ -103,7 +104,7 @@ const id = await db.insert({
 })
 ```
 
-#### `getOne(id: string): Promise<LocalDBEntityWithId<T> | null>`
+#### `getOne(id: string): Promise<JsonDBEntityWithId<T> | null>`
 
 Get a single document by ID.
 
@@ -111,12 +112,20 @@ Get a single document by ID.
 const user = await db.getOne(id)
 ```
 
-#### `get(ids: string[]): Promise<LocalDBEntityWithId<T>[]>`
+#### `get(ids: string[]): Promise<JsonDBEntityWithId<T>[]>`
 
 Get multiple documents by IDs.
 
 ```typescript
 const users = await db.get([id1, id2, id3])
+```
+
+#### `getAll(): Promise<JsonDBEntityWithId<T>[]>`
+
+Get all documents in the database.
+
+```typescript
+const allUsers = await db.getAll()
 ```
 
 #### `exists(id: string): Promise<boolean>`
@@ -145,7 +154,15 @@ Delete a document. Automatically updates all indexes.
 await db.delete(id)
 ```
 
-#### `getIndex(indexName: string): LocalDBIndexGetter<T>`
+#### `clear(): Promise<void>`
+
+Delete all documents and clear all indexes.
+
+```typescript
+await db.clear()
+```
+
+#### `getIndex(indexName: string): JsonDBIndex<T>`
 
 Get an index accessor for querying.
 
@@ -165,7 +182,7 @@ await db.remapIndex()
 
 Once you get an index using `getIndex()`, you can use these methods:
 
-#### `get(value: any): Promise<LocalDBEntityWithId<T>[]>`
+#### `get(value: any): Promise<JsonDBEntityWithId<T>[]>`
 
 Get all documents where the indexed field equals the value.
 
@@ -173,7 +190,7 @@ Get all documents where the indexed field equals the value.
 const davids = await db.getIndex('name').get('David')
 ```
 
-#### `getOne(value: any): Promise<LocalDBEntityWithId<T> | null>`
+#### `getOne(value: any): Promise<JsonDBEntityWithId<T> | null>`
 
 Get the first document where the indexed field equals the value.
 
@@ -189,7 +206,7 @@ Check if any document has the indexed field equal to the value.
 const hasDavid = await db.getIndex('name').exists('David')
 ```
 
-#### `query(options: LocalDBIterator): Promise<LocalDBEntityWithId<T>[]>`
+#### `query(options: JsonDBIterator): Promise<JsonDBEntityWithId<T>[]>`
 
 Query documents using range operators.
 
@@ -219,9 +236,9 @@ const withTest = await db.getIndex('test').query({
 See the complete example in the `example/` directory:
 
 ```typescript
-import { LocalDB } from '@david.uhlir/local-db'
+import { JsonDBRepository } from '@david.uhlir/local-db'
 
-const db = new LocalDB('./db', {
+const db = new JsonDBRepository('./db', {
   indexes: {
     name: {
       path: 'name',
@@ -304,7 +321,7 @@ interface User {
   }
 }
 
-const db = new LocalDB<User, typeof indexes>('./db', {
+const db = new JsonDBRepository<User, typeof indexes>('./db', {
   indexes: {
     name: { path: 'name' },
     email: { path: 'email' },
@@ -319,6 +336,44 @@ Documents returned from the database will include a `$id` field:
 type UserWithId = User & { $id: string }
 ```
 
+## Multiple Databases with JsonDB
+
+You can manage multiple related databases using `JsonDB`:
+
+```typescript
+import { JsonDB, defineDb } from '@david.uhlir/local-db'
+
+interface User {
+  name: string
+  age: number
+}
+
+interface Post {
+  title: string
+  userId: string
+}
+
+const db = new JsonDB({
+  path: './data',
+  databases: {
+    users: defineDb<User>({
+      indexes: {
+        name: { path: 'name' },
+      },
+    }),
+    posts: defineDb<Post>({
+      indexes: {
+        userId: { path: 'userId' },
+      },
+    }),
+  },
+})
+
+// Access individual databases
+const usersDb = db.getDatabase('users')
+const postsDb = db.getDatabase('posts')
+```
+
 ## Indexable Types
 
 The following types can be indexed and queried:
@@ -330,12 +385,20 @@ The following types can be indexed and queried:
 - `null`
 - `object` (hashed)
 
+## Storage Format
+
+- Each document is stored as a separate JSON file: `{id}.json`
+- Indexes are stored as JSON files: `.index-{indexName}.json`
+- Human-readable and can be manually inspected/edited if needed
+- Automatic directory creation
+
 ## Performance Tips
 
 1. **Create indexes** for fields you frequently query
 2. **Use `getOne()`** instead of `get()` when you only need one result
 3. **Batch operations** when inserting multiple documents
 4. **Rebuild indexes** with `remapIndex()` if you change index definitions
+5. **Thread-safe** operations using `@david.uhlir/mutex` for concurrent access
 
 ## License
 

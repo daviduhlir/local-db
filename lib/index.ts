@@ -1,4 +1,4 @@
-export * from './LocalDB'
-export * from './LocalDBRepository'
-export * from './components/LocalDBIndexGetter'
+export * from './components/JsonDBIndex'
+export * from './components/JsonDBRepository'
 export * from './interfaces'
+export * from './JsonDB'

@@ -1,7 +1,7 @@
 {
   "name": "@david.uhlir/local-db",
   "version": "0.1.0",
-  "description": "Simple local JSON database on level with indexes",
+  "description": "Simple local JSON database with indexes",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "scripts": {
@@ -38,9 +38,7 @@
   },
   "dependencies": {
     "@david.uhlir/expression": "^2.0.1",
-    "@david.uhlir/ipc-method": "^1.0.23",
     "@david.uhlir/mutex": "^1.3.8",
-    "charwise": "^3.0.1",
-    "level": "^10.0.0"
+    "charwise": "^3.0.1"
   }
 }

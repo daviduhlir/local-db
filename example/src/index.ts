@@ -1,6 +1,6 @@
-import { LocalDB } from '@david.uhlir/local-db'
+import { JsonDBRepository } from '@david.uhlir/local-db'
 
-const db = new LocalDB('./db', {
+const db = new JsonDBRepository('./db', {
   indexes: {
     name: {
       path: 'name',

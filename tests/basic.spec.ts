@@ -1,12 +1,12 @@
 import { expect } from 'chai'
-import { LocalDBRepository } from '../dist'
+import { JsonDBRepository } from '../dist'
 import * as path from 'path'
 import * as fs from 'fs'
 
 const TEST_DB_PATH = path.join(__dirname, '.test-db')
 
 describe('Basic CRUD Tests', () => {
-  let db: LocalDBRepository<any, any>
+  let db: JsonDBRepository<any, any>
 
   beforeEach(async () => {
     // Clean up test database
@@ -14,7 +14,7 @@ describe('Basic CRUD Tests', () => {
       fs.rmSync(TEST_DB_PATH, { recursive: true, force: true })
     }
 
-    db = new LocalDBRepository(TEST_DB_PATH, {
+    db = new JsonDBRepository(TEST_DB_PATH, {
       indexes: {
         name: {
           path: 'name',

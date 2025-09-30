@@ -1,13 +1,13 @@
-export type LocalDBIndexableType = string | number | Date | boolean | null | object
+export type JsonDBIndexableType = string | number | Date | boolean | null | object
 
-export interface LocalDBEntity {}
-export type LocalDBIdType = string
+export interface JsonDBEntity {}
+export type JsonDBIdType = string
 
-export type LocalDBEntityWithId<T> = T & {
-  $id: LocalDBIdType
+export type JsonDBEntityWithId<T> = T & {
+  $id: JsonDBIdType
 }
 
-export interface LocalDBItterator<T = any> {
+export interface JsonDBItterator<T = any> {
   gt?: T
   gte?: T
   lt?: T
