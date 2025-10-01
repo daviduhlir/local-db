@@ -31,6 +31,14 @@ export class JsonDB<DBs extends JsonDBSetsOptionsDatabases> {
     })
   }
 
+  public async open() {
+    await Promise.all(Object.values(this.databases).map(db => db.open()))
+  }
+
+  public async close() {
+    await Promise.all(Object.values(this.databases).map(db => db.close()))
+  }
+
   public getRepository<Name extends keyof DBs>(name: Name): DBs[Name] extends JsonDBRepositoryDefinition<infer T> ? JsonDBRepository<T, any> : never {
     return this.databases[name]
   }
