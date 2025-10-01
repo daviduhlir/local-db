@@ -22,4 +22,9 @@ export interface JsonDBItterator<T = any> {
   excludes?: T
   empty?: boolean
   notEmpty?: boolean
+
+  // limit offset sort
+  limit?: number
+  offset?: number
+  sort?: 'asc' | 'desc'
 }

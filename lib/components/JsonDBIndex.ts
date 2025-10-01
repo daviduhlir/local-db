@@ -29,6 +29,7 @@ export class JsonDBIndex<T extends JsonDBEntity, K extends JsonDBIndexableType =
       getAll: () => Promise<JsonDBEntityWithId<T>[]>
       get: (ids: JsonDBIdType[]) => Promise<JsonDBEntityWithId<T>[]>
     },
+    readonly sorted: boolean = true,
   ) {
     this.indexName = hashString(indexKeyPath)
   }
@@ -169,6 +170,9 @@ export class JsonDBIndex<T extends JsonDBEntity, K extends JsonDBIndexableType =
     await SharedMutex.lockSingleAccess(`${this.unique}-index:${this.indexName}`, async () => {
       const data = await this.readIndexData()
       const result = await modifier(data)
+      if (this.sorted) {
+        result.forward = Object.fromEntries(Object.entries(result.forward).sort(sortIndexEntries))
+      }
       await this.writeIndexData(result)
     })
   }
@@ -232,8 +236,13 @@ export class JsonDBIndex<T extends JsonDBEntity, K extends JsonDBIndexableType =
       usedItteratorOptions.notEmpty = options.notEmpty
     }
     return this.readIndex(async data => {
-      const results: JsonDBIdType[] = []
-      for (const k of Object.keys(data.forward)) {
+      let results: JsonDBIdType[] = []
+      let i = 0
+      const keys = Object.keys(data.forward)
+      if (usedItteratorOptions.sort === 'desc') {
+        keys.reverse()
+      }
+      for (const k of keys) {
         if (usedItteratorOptions.gt && k <= usedItteratorOptions.gt) {
           continue
         }
@@ -291,14 +300,27 @@ export class JsonDBIndex<T extends JsonDBEntity, K extends JsonDBIndexableType =
             }
           }
         }
+        if (!usedItteratorOptions.sort &&usedItteratorOptions.offset && i < usedItteratorOptions.offset) {
+          i++
+          continue
+        }
         results.push(...data.forward[k])
-        if (limit && results.length >= limit) {
+        if (limit && !usedItteratorOptions.sort && results.length >= limit) {
           break
         }
       }
       return results
     })
   }
+}
+
+function sortIndexEntries(a: [string, any], b: [string, any]) {
+  if (a[0] > b[0]) {
+    return -1
+  } else if (a[0] < b[0]) {
+    return 1
+  }
+  return 0
 }
 
 function serializeKeyByValue(value: any): string {
