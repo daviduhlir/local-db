@@ -55,6 +55,13 @@ export class JsonDBRepository<T extends JsonDBEntity, I extends JsonDBOptionsInd
     return this.indexes[indexName as string]
   }
 
+  async count(): Promise<number> {
+    return SharedMutex.lockMultiAccess(`${this.unique}`, async () => {
+      const files = await fs.readdir(this.dbPath)
+      return files.filter(f => f.endsWith('.json') && !f.startsWith('index-')).length
+    })
+  }
+
   async exists(id: JsonDBIdType): Promise<boolean> {
     return SharedMutex.lockMultiAccess(`${this.unique}/${id}`, async () => {
       return !!(await fs.stat(path.join(this.dbPath, FILES.ENTITY_DB.replace('{id}', id))).catch(() => false))

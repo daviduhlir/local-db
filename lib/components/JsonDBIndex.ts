@@ -33,7 +33,7 @@ export class JsonDBIndex<T extends JsonDBEntity, K extends JsonDBIndexableType =
     this.indexName = hashString(indexKeyPath)
   }
 
-  public async open() {
+  async open() {
     const indexFile = path.join(this.dbPath, FILES.INDEX_DB.replace('{indexName}', this.indexName))
     if (!(await fs.stat(indexFile).catch(() => false))) {
       await fs.mkdir(this.dbPath, { recursive: true })
@@ -41,18 +41,18 @@ export class JsonDBIndex<T extends JsonDBEntity, K extends JsonDBIndexableType =
     }
   }
 
-  public async close() {
+  async close() {
     // Nothing to do
   }
 
-  public async exists(value: K): Promise<boolean> {
+  async exists(value: K): Promise<boolean> {
     return this.readIndex(async data => {
       const k = serializeKeyByValue(value)
       return !!data.forward[k]?.length
     })
   }
 
-  public async get(value: any): Promise<JsonDBEntityWithId<T>[]> {
+  async get(value: any): Promise<JsonDBEntityWithId<T>[]> {
     const ids = await this.readIndex(async data => {
       const k = serializeKeyByValue(value)
       return data.forward[k] || []
@@ -62,7 +62,7 @@ export class JsonDBIndex<T extends JsonDBEntity, K extends JsonDBIndexableType =
     })
   }
 
-  public async getOne(value: any): Promise<JsonDBEntityWithId<T> | null> {
+  async getOne(value: any): Promise<JsonDBEntityWithId<T> | null> {
     const id = await this.readIndex(async data => {
       const k = serializeKeyByValue(value)
       if (!data.forward[k] || !data.forward[k].length) {
@@ -75,7 +75,125 @@ export class JsonDBIndex<T extends JsonDBEntity, K extends JsonDBIndexableType =
     })
   }
 
-  public async query(options: JsonDBItterator<JsonDBIndexableType>): Promise<JsonDBEntityWithId<T>[]> {
+  async query(options: JsonDBItterator<JsonDBIndexableType>): Promise<JsonDBEntityWithId<T>[]> {
+    const ids = await this.queryIds(options)
+    return this.dataGetters.get(ids)
+  }
+
+  async count(options: JsonDBItterator<JsonDBIndexableType>): Promise<number> {
+    return (await this.queryIds(options)).length
+  }
+
+  /**
+   *
+   * Friend methods
+   *
+   */
+  async [friendMethodsSymbolAddItem](item: JsonDBEntityWithId<T>) {
+    const value = getByExpression(item, this.indexKeyPath)
+    const k = serializeKeyByValue(value)
+    return this.modifyIndex(async data => {
+      const ids = data.forward[k] || []
+      if (!ids.includes(item.$id)) {
+        ids.push(item.$id)
+        data.forward[k] = ids
+        data.backward[item.$id] = k
+      }
+      return data
+    })
+  }
+
+  async [friendMethodsSymbolRemoveItem](id: JsonDBIdType) {
+    return this.modifyIndex(async data => {
+      const k = data.backward[id]
+      if (!k && k !== '') {
+        return data
+      }
+      const ids = data.forward[k] || []
+      const idx = ids.indexOf(id)
+      if (idx === -1) {
+        return data
+      }
+      ids.splice(idx, 1)
+      delete data.backward[id]
+      if (ids.length) {
+        data.forward[k] = ids
+      } else {
+        delete data.forward[k]
+      }
+      return data
+    })
+  }
+
+  async [friendMethodsSymbolRemapIndex]() {
+    return SharedMutex.lockSingleAccess(`${this.unique}`, async () => {
+      const items = await this.dataGetters.getAll()
+      return this.modifyIndex(async data => {
+        data.forward = {}
+        data.backward = {}
+        for (const item of items) {
+          const value = getByExpression(item, this.indexKeyPath)
+          const k = serializeKeyByValue(value)
+          const ids = data.forward[k] || []
+          ids.push(item.$id)
+          data.forward[k] = ids
+          data.backward[item.$id] = k
+        }
+        return data
+      })
+    })
+  }
+
+  async [friendMethodsSymbolClearIndex]() {
+    return this.modifyIndex(async data => {
+      data.forward = {}
+      data.backward = {}
+      return data
+    })
+  }
+
+  /**
+   *
+   * Internal methods
+   *
+   */
+
+  protected async readIndex<T>(getter: (data: JsonDBIndexedData) => Promise<T>): Promise<T> {
+    return SharedMutex.lockMultiAccess<T>(`${this.unique}-index:${this.indexName}`, async () => {
+      const data = await this.readIndexData()
+      return getter(data)
+    })
+  }
+
+  protected async modifyIndex(modifier: (data: JsonDBIndexedData) => Promise<JsonDBIndexedData>): Promise<void> {
+    await SharedMutex.lockSingleAccess(`${this.unique}-index:${this.indexName}`, async () => {
+      const data = await this.readIndexData()
+      const result = await modifier(data)
+      await this.writeIndexData(result)
+    })
+  }
+
+  protected async readIndexData(): Promise<JsonDBIndexedData> {
+    try {
+      const indexFile = path.join(this.dbPath, FILES.INDEX_DB.replace('{indexName}', this.indexName))
+      if (!(await fs.stat(indexFile).catch(() => false))) {
+        return {
+          forward: {},
+          backward: {},
+        }
+      }
+      return JSON.parse(await fs.readFile(indexFile, 'utf8'))
+    } catch (e) {
+      throw new Error(`Error reading index ${this.indexName}`)
+    }
+  }
+
+  protected async writeIndexData(data: JsonDBIndexedData) {
+    const indexFile = path.join(this.dbPath, FILES.INDEX_DB.replace('{indexName}', this.indexName))
+    await fs.writeFile(indexFile, JSON.stringify(data, null, 2))
+  }
+
+  protected queryIds(options: JsonDBItterator<JsonDBIndexableType>): Promise<JsonDBIdType[]> {
     const usedItteratorOptions: JsonDBItterator<JsonDBIndexValue> = {}
     if (options.hasOwnProperty('gt')) {
       usedItteratorOptions.gt = serializeKeyByValue(options.gt)
@@ -175,117 +293,8 @@ export class JsonDBIndex<T extends JsonDBEntity, K extends JsonDBIndexableType =
         }
         results.push(...data.forward[k])
       }
-      return this.dataGetters.get(results)
+      return results
     })
-  }
-
-  /**
-   *
-   * Friend methods
-   *
-   */
-  public async [friendMethodsSymbolAddItem](item: JsonDBEntityWithId<T>) {
-    const value = getByExpression(item, this.indexKeyPath)
-    const k = serializeKeyByValue(value)
-    return this.modifyIndex(async data => {
-      const ids = data.forward[k] || []
-      if (!ids.includes(item.$id)) {
-        ids.push(item.$id)
-        data.forward[k] = ids
-        data.backward[item.$id] = k
-      }
-      return data
-    })
-  }
-
-  public async [friendMethodsSymbolRemoveItem](id: JsonDBIdType) {
-    return this.modifyIndex(async data => {
-      const k = data.backward[id]
-      if (!k && k !== '') {
-        return data
-      }
-      const ids = data.forward[k] || []
-      const idx = ids.indexOf(id)
-      if (idx === -1) {
-        return data
-      }
-      ids.splice(idx, 1)
-      delete data.backward[id]
-      if (ids.length) {
-        data.forward[k] = ids
-      } else {
-        delete data.forward[k]
-      }
-      return data
-    })
-  }
-
-  public async [friendMethodsSymbolRemapIndex]() {
-    return SharedMutex.lockSingleAccess(`${this.unique}`, async () => {
-      const items = await this.dataGetters.getAll()
-      return this.modifyIndex(async data => {
-        data.forward = {}
-        data.backward = {}
-        for (const item of items) {
-          const value = getByExpression(item, this.indexKeyPath)
-          const k = serializeKeyByValue(value)
-          const ids = data.forward[k] || []
-          ids.push(item.$id)
-          data.forward[k] = ids
-          data.backward[item.$id] = k
-        }
-        return data
-      })
-    })
-  }
-
-  public async [friendMethodsSymbolClearIndex]() {
-    return this.modifyIndex(async data => {
-      data.forward = {}
-      data.backward = {}
-      return data
-    })
-  }
-
-  /**
-   *
-   * Internal methods
-   *
-   */
-
-  protected async readIndex<T>(getter: (data: JsonDBIndexedData) => Promise<T>): Promise<T> {
-    return SharedMutex.lockMultiAccess<T>(`${this.unique}-index:${this.indexName}`, async () => {
-      const data = await this.readIndexData()
-      return getter(data)
-    })
-  }
-
-  protected async modifyIndex(modifier: (data: JsonDBIndexedData) => Promise<JsonDBIndexedData>): Promise<void> {
-    await SharedMutex.lockSingleAccess(`${this.unique}-index:${this.indexName}`, async () => {
-      const data = await this.readIndexData()
-      const result = await modifier(data)
-      await this.writeIndexData(result)
-    })
-  }
-
-  protected async readIndexData(): Promise<JsonDBIndexedData> {
-    try {
-      const indexFile = path.join(this.dbPath, FILES.INDEX_DB.replace('{indexName}', this.indexName))
-      if (!(await fs.stat(indexFile).catch(() => false))) {
-        return {
-          forward: {},
-          backward: {},
-        }
-      }
-      return JSON.parse(await fs.readFile(indexFile, 'utf8'))
-    } catch (e) {
-      throw new Error(`Error reading index ${this.indexName}`)
-    }
-  }
-
-  protected async writeIndexData(data: JsonDBIndexedData) {
-    const indexFile = path.join(this.dbPath, FILES.INDEX_DB.replace('{indexName}', this.indexName))
-    await fs.writeFile(indexFile, JSON.stringify(data, null, 2))
   }
 }
 
