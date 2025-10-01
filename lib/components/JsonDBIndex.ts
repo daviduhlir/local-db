@@ -14,8 +14,8 @@ export const friendMethodsSymbolClearIndex = Symbol('clearIndex')
 
 export type JsonDBIndexValue = string
 export interface JsonDBIndexedData {
-  forward: {[k: JsonDBIndexValue]: JsonDBIdType[]}
-  backward: {[k: JsonDBIdType]: JsonDBIndexValue}
+  forward: { [k: JsonDBIndexValue]: JsonDBIdType[] }
+  backward: { [k: JsonDBIdType]: JsonDBIndexValue }
 }
 
 export class JsonDBIndex<T extends JsonDBEntity, K extends JsonDBIndexableType = JsonDBIndexableType> {
@@ -28,14 +28,14 @@ export class JsonDBIndex<T extends JsonDBEntity, K extends JsonDBIndexableType =
       getOne: (id: JsonDBIdType) => Promise<JsonDBEntityWithId<T> | null>
       getAll: () => Promise<JsonDBEntityWithId<T>[]>
       get: (ids: JsonDBIdType[]) => Promise<JsonDBEntityWithId<T>[]>
-    }
+    },
   ) {
     this.indexName = hashString(indexKeyPath)
   }
 
   public async open() {
     const indexFile = path.join(this.dbPath, FILES.INDEX_DB.replace('{indexName}', this.indexName))
-    if (!await fs.stat(indexFile).catch(() => false)) {
+    if (!(await fs.stat(indexFile).catch(() => false))) {
       await fs.mkdir(this.dbPath, { recursive: true })
       await this[friendMethodsSymbolRemapIndex]()
     }
@@ -46,14 +46,14 @@ export class JsonDBIndex<T extends JsonDBEntity, K extends JsonDBIndexableType =
   }
 
   public async exists(value: K): Promise<boolean> {
-    return this.readIndex(async (data) => {
+    return this.readIndex(async data => {
       const k = serializeKeyByValue(value)
       return !!data.forward[k]?.length
     })
   }
 
   public async get(value: any): Promise<JsonDBEntityWithId<T>[]> {
-    const ids = await this.readIndex(async (data) => {
+    const ids = await this.readIndex(async data => {
       const k = serializeKeyByValue(value)
       return data.forward[k] || []
     })
@@ -63,7 +63,7 @@ export class JsonDBIndex<T extends JsonDBEntity, K extends JsonDBIndexableType =
   }
 
   public async getOne(value: any): Promise<JsonDBEntityWithId<T> | null> {
-    const id = await this.readIndex(async (data) => {
+    const id = await this.readIndex(async data => {
       const k = serializeKeyByValue(value)
       if (!data.forward[k] || !data.forward[k].length) {
         return null
@@ -113,7 +113,7 @@ export class JsonDBIndex<T extends JsonDBEntity, K extends JsonDBIndexableType =
     if (options.hasOwnProperty('notEmpty')) {
       usedItteratorOptions.notEmpty = options.notEmpty
     }
-    return this.readIndex(async (data) => {
+    return this.readIndex(async data => {
       const results: JsonDBIdType[] = []
       for (const k of Object.keys(data.forward)) {
         if (usedItteratorOptions.gt && k <= usedItteratorOptions.gt) {
@@ -187,7 +187,7 @@ export class JsonDBIndex<T extends JsonDBEntity, K extends JsonDBIndexableType =
   public async [friendMethodsSymbolAddItem](item: JsonDBEntityWithId<T>) {
     const value = getByExpression(item, this.indexKeyPath)
     const k = serializeKeyByValue(value)
-    return this.modifyIndex(async (data) => {
+    return this.modifyIndex(async data => {
       const ids = data.forward[k] || []
       if (!ids.includes(item.$id)) {
         ids.push(item.$id)
@@ -199,7 +199,7 @@ export class JsonDBIndex<T extends JsonDBEntity, K extends JsonDBIndexableType =
   }
 
   public async [friendMethodsSymbolRemoveItem](id: JsonDBIdType) {
-    return this.modifyIndex(async (data) => {
+    return this.modifyIndex(async data => {
       const k = data.backward[id]
       if (!k && k !== '') {
         return data
@@ -223,7 +223,7 @@ export class JsonDBIndex<T extends JsonDBEntity, K extends JsonDBIndexableType =
   public async [friendMethodsSymbolRemapIndex]() {
     return SharedMutex.lockSingleAccess(`${this.unique}`, async () => {
       const items = await this.dataGetters.getAll()
-      return this.modifyIndex(async (data) => {
+      return this.modifyIndex(async data => {
         data.forward = {}
         data.backward = {}
         for (const item of items) {
@@ -240,7 +240,7 @@ export class JsonDBIndex<T extends JsonDBEntity, K extends JsonDBIndexableType =
   }
 
   public async [friendMethodsSymbolClearIndex]() {
-    return this.modifyIndex(async (data) => {
+    return this.modifyIndex(async data => {
       data.forward = {}
       data.backward = {}
       return data
@@ -271,14 +271,14 @@ export class JsonDBIndex<T extends JsonDBEntity, K extends JsonDBIndexableType =
   protected async readIndexData(): Promise<JsonDBIndexedData> {
     try {
       const indexFile = path.join(this.dbPath, FILES.INDEX_DB.replace('{indexName}', this.indexName))
-      if (!await fs.stat(indexFile).catch(() => false)) {
+      if (!(await fs.stat(indexFile).catch(() => false))) {
         return {
           forward: {},
           backward: {},
         }
       }
       return JSON.parse(await fs.readFile(indexFile, 'utf8'))
-    } catch(e) {
+    } catch (e) {
       throw new Error(`Error reading index ${this.indexName}`)
     }
   }

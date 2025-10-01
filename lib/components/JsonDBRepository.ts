@@ -3,7 +3,13 @@ import * as path from 'path'
 import { createRandomId, hashString } from '../utils'
 import { SharedMutex } from '@david.uhlir/mutex'
 import { JsonDBEntity, JsonDBEntityWithId, JsonDBIdType } from '../interfaces'
-import { friendMethodsSymbolAddItem, friendMethodsSymbolClearIndex, friendMethodsSymbolRemapIndex, friendMethodsSymbolRemoveItem, JsonDBIndex } from './JsonDBIndex'
+import {
+  friendMethodsSymbolAddItem,
+  friendMethodsSymbolClearIndex,
+  friendMethodsSymbolRemapIndex,
+  friendMethodsSymbolRemoveItem,
+  JsonDBIndex,
+} from './JsonDBIndex'
 import { FILES } from '../constants'
 
 export interface JsonDBOptionsIndexes {
@@ -30,9 +36,9 @@ export class JsonDBRepository<T extends JsonDBEntity, I extends JsonDBOptionsInd
     if (this.options.indexes) {
       for (const [indexName, indexDef] of Object.entries(this.options.indexes)) {
         this.indexes[indexName] = new JsonDBIndex<T, any>(this.unique, this.dbPath, indexDef.path, {
-          getOne: (id) => this.getOneRaw(id),
+          getOne: id => this.getOneRaw(id),
           getAll: () => this.getAllRaw(),
-          get: (ids) => this.getRaw(ids),
+          get: ids => this.getRaw(ids),
         })
         await this.indexes[indexName].open()
       }
@@ -51,7 +57,7 @@ export class JsonDBRepository<T extends JsonDBEntity, I extends JsonDBOptionsInd
 
   async exists(id: JsonDBIdType): Promise<boolean> {
     return SharedMutex.lockMultiAccess(`${this.unique}/${id}`, async () => {
-      return !!await fs.stat(path.join(this.dbPath, FILES.ENTITY_DB.replace('{id}', id))).catch(() => false)
+      return !!(await fs.stat(path.join(this.dbPath, FILES.ENTITY_DB.replace('{id}', id))).catch(() => false))
     })
   }
 
@@ -81,7 +87,7 @@ export class JsonDBRepository<T extends JsonDBEntity, I extends JsonDBOptionsInd
 
   async edit(id: JsonDBIdType, value: T) {
     return SharedMutex.lockSingleAccess(`${this.unique}/${id}`, async () => {
-      if (!await fs.stat(path.join(this.dbPath, FILES.ENTITY_DB.replace('{id}', id))).catch(() => false)) {
+      if (!(await fs.stat(path.join(this.dbPath, FILES.ENTITY_DB.replace('{id}', id))).catch(() => false))) {
         throw new Error('Item not found')
       }
       const data = await fs.readFile(path.join(this.dbPath, FILES.ENTITY_DB.replace('{id}', id)), 'utf8')
@@ -105,7 +111,7 @@ export class JsonDBRepository<T extends JsonDBEntity, I extends JsonDBOptionsInd
 
   async delete(id: JsonDBIdType) {
     return SharedMutex.lockSingleAccess(`${this.unique}/${id}`, async () => {
-      if (!await fs.stat(path.join(this.dbPath, FILES.ENTITY_DB.replace('{id}', id))).catch(() => false)) {
+      if (!(await fs.stat(path.join(this.dbPath, FILES.ENTITY_DB.replace('{id}', id))).catch(() => false))) {
         throw new Error('Item not found')
       }
       await fs.unlink(path.join(this.dbPath, FILES.ENTITY_DB.replace('{id}', id)))
@@ -150,7 +156,7 @@ export class JsonDBRepository<T extends JsonDBEntity, I extends JsonDBOptionsInd
    */
   protected async getOneRaw(id: JsonDBIdType): Promise<JsonDBEntityWithId<T> | null> {
     try {
-      if (!await fs.stat(path.join(this.dbPath, FILES.ENTITY_DB.replace('{id}', id))).catch(() => false)) {
+      if (!(await fs.stat(path.join(this.dbPath, FILES.ENTITY_DB.replace('{id}', id))).catch(() => false))) {
         return null
       }
       const data = await fs.readFile(path.join(this.dbPath, FILES.ENTITY_DB.replace('{id}', id)), 'utf8')
@@ -191,4 +197,3 @@ export class JsonDBRepository<T extends JsonDBEntity, I extends JsonDBOptionsInd
     }
   }
 }
-

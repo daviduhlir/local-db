@@ -3,7 +3,7 @@ import { JsonDBRepository, JsonDBOptions } from './components/JsonDBRepository'
 
 export class JsonDBRepositoryDefinition<T extends JsonDBEntity> {
   constructor(readonly options: JsonDBOptions<any>) {}
-  declare __entityType?: T;
+  declare __entityType?: T
 }
 
 export interface JsonDBSetsOptionsDatabases {
@@ -25,15 +25,13 @@ export class JsonDB<DBs extends JsonDBSetsOptionsDatabases> {
     if (keys.some(k => typeof k !== 'string' || k.match(/[^a-zA-Z0-9]/))) {
       throw new Error('Database name can contain only letters and numbers')
     }
-    keys.forEach((dbName) => {
+    keys.forEach(dbName => {
       const def = this.options.databases[dbName]
       ;(this.databases as any)[dbName] = new JsonDBRepository(this.options.path + '/' + String(dbName), def.options)
     })
   }
 
-  public getRepository<Name extends keyof DBs>(
-    name: Name
-  ): DBs[Name] extends JsonDBRepositoryDefinition<infer T> ? JsonDBRepository<T, any> : never {
+  public getRepository<Name extends keyof DBs>(name: Name): DBs[Name] extends JsonDBRepositoryDefinition<infer T> ? JsonDBRepository<T, any> : never {
     return this.databases[name]
   }
 }
