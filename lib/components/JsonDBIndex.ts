@@ -75,8 +75,8 @@ export class JsonDBIndex<T extends JsonDBEntity, K extends JsonDBIndexableType =
     })
   }
 
-  async query(options: JsonDBItterator<JsonDBIndexableType>): Promise<JsonDBEntityWithId<T>[]> {
-    const ids = await this.queryIds(options)
+  async query(options: JsonDBItterator<JsonDBIndexableType>, limit?: number): Promise<JsonDBEntityWithId<T>[]> {
+    const ids = await this.queryIds(options, limit)
     return this.dataGetters.get(ids)
   }
 
@@ -193,7 +193,7 @@ export class JsonDBIndex<T extends JsonDBEntity, K extends JsonDBIndexableType =
     await fs.writeFile(indexFile, JSON.stringify(data, null, 2))
   }
 
-  protected queryIds(options: JsonDBItterator<JsonDBIndexableType>): Promise<JsonDBIdType[]> {
+  protected queryIds(options: JsonDBItterator<JsonDBIndexableType>, limit?: number): Promise<JsonDBIdType[]> {
     const usedItteratorOptions: JsonDBItterator<JsonDBIndexValue> = {}
     if (options.hasOwnProperty('gt')) {
       usedItteratorOptions.gt = serializeKeyByValue(options.gt)
@@ -292,6 +292,9 @@ export class JsonDBIndex<T extends JsonDBEntity, K extends JsonDBIndexableType =
           }
         }
         results.push(...data.forward[k])
+        if (limit && results.length >= limit) {
+          break
+        }
       }
       return results
     })
