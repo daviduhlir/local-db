@@ -92,7 +92,7 @@ export class JsonDBRepository<T extends JsonDBEntity, I extends JsonDBOptionsInd
     })
   }
 
-  async edit(id: JsonDBIdType, value: T) {
+  async edit(id: JsonDBIdType, value: T): Promise<T> {
     return SharedMutex.lockSingleAccess(`${this.unique}/${id}`, async () => {
       if (!(await fs.stat(path.join(this.dbPath, FILES.ENTITY_DB.replace('{id}', id))).catch(() => false))) {
         throw new Error('Item not found')
@@ -107,6 +107,7 @@ export class JsonDBRepository<T extends JsonDBEntity, I extends JsonDBOptionsInd
             await index[friendMethodsSymbolRemoveItem](id)
             await index[friendMethodsSymbolAddItem](item)
           }
+          return item
         } catch (e) {
           throw new Error(`Error writing entity ${id}`)
         }

@@ -300,7 +300,7 @@ export class JsonDBIndex<T extends JsonDBEntity, K extends JsonDBIndexableType =
             }
           }
         }
-        if (!usedItteratorOptions.sort &&usedItteratorOptions.offset && i < usedItteratorOptions.offset) {
+        if (!usedItteratorOptions.sort && usedItteratorOptions.offset && i < usedItteratorOptions.offset) {
           i++
           continue
         }

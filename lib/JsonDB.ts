@@ -47,20 +47,3 @@ export class JsonDB<DBs extends JsonDBSetsOptionsDatabases> {
 export function repository<T extends JsonDBEntity>(options: JsonDBOptions<any>): JsonDBRepositoryDefinition<T> {
   return new JsonDBRepositoryDefinition(options)
 }
-
-/*
-const t = new JsonDBSet({
-  path: 'test',
-  databases: {
-    test: repository<{ name: string; test?: number }>({
-      indexes: {
-        name: {
-          path: 'name',
-        },
-      },
-    }),
-  },
-})
-
-const data = await t.getDatabase('test').getOne('dfw')
-*/
